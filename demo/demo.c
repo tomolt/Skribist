@@ -5,9 +5,9 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#define WIDTH 512
-#define HEIGHT 512
-#define ANGLES 32
+#define WIDTH 256
+#define HEIGHT 256
+#define ANGLES 10
 
 static uint8_t image[WIDTH * HEIGHT];
 
@@ -27,7 +27,9 @@ static void bresenham(int x0, int y0, int x1, int y1)
 		int y = y0;
 		int ye = eu / 2; // error along y
 		for (int x = bx; x <= bx + lx; ++x) {
-			image[y * WIDTH + x] = 255;
+			int c = 255 - ye * 255 / eu;
+			image[y * WIDTH + x] = c;
+			image[(y + es) * WIDTH + x] = 255 - c;
 			ye += dy;
 			y += es * (ye / eu);
 			ye = ye % eu;
