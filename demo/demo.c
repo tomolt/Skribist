@@ -49,22 +49,12 @@ static void bresenham(int x0, int y0, int x1, int y1)
 	}
 }
 
-static uint16_t u16(uint16_t v)
+static void fmt_le_dword(char *buf, uint32_t v)
 {
-	// TODO
-	return v;
-}
-
-static uint32_t u32(uint32_t v)
-{
-	// TODO
-	return v;
-}
-
-static int32_t i32(int32_t v)
-{
- // TODO
- return v;
+	buf[0] = v & 0xFF;
+	buf[1] = v >> 8 & 0xFF;
+	buf[2] = v >> 16 & 0xFF;
+	buf[3] = v >> 24 & 0xFF;
 }
 
 static void write_bmp(void)
@@ -73,14 +63,14 @@ static void write_bmp(void)
 	// Header
 	hdr[0] = 'B';
 	hdr[1] = 'M';
-	*(uint32_t *) &hdr[2] = u32(54 + 3 * WIDTH * HEIGHT); // size of file
-	*(uint32_t *) &hdr[10] = u32(54); // offset to image data
+	fmt_le_dword(&hdr[2], 54 + 3 * WIDTH * HEIGHT); // size of file
+	hdr[10] = 54; // offset to image data
 	// InfoHeader
-	*(uint32_t *) &hdr[14] = u32(40); // size of InfoHeader
-	*( int32_t *) &hdr[18] = i32(WIDTH);
-	*( int32_t *) &hdr[22] = i32(HEIGHT);
-	*(uint16_t *) &hdr[26] = u16(1); // color planes
-	*(uint16_t *) &hdr[28] = u16(24); // bpp
+	hdr[14] = 40; // size of InfoHeader
+	fmt_le_dword(&hdr[18], WIDTH);
+	fmt_le_dword(&hdr[22], HEIGHT);
+	hdr[26] = 1; // color planes
+	hdr[28] = 24; // bpp
 	fwrite(hdr, 1, 54, stdout);
 	for (int y = 0; y < HEIGHT; ++y) {
 		for (int x = 0; x < WIDTH; ++x) {
