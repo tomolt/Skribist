@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <assert.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
 #define WIDTH 256
 #define HEIGHT 256
@@ -26,31 +28,52 @@ static void split_line(line_t line)
 	double dx = line.pts[1].x - line.pts[0].x;
 	double dy = line.pts[1].y - line.pts[0].y;
 
-	double minx = min(line.pts[0].x, line.pts[1].x);
-	double miny = min(line.pts[0].y, line.pts[1].y);
-	double maxx = max(line.pts[0].x, line.pts[1].x);
-	double maxy = max(line.pts[0].y, line.pts[1].y);
+	point_t pts[1000];
+	int pts_top = 0;
 
-	double ts[1000];
-	int ts_top = 0;
+	assert(dx != 0.0);
+	assert(dy != 0.0);
 
-	if (dx != 0.0) {
-		for (int wx = ceil(minx); wx <= floor(maxx); ++wx) {
-			double t = (wx - sx) / dx;
-			ts[ts_top++] = t;
-		}
+	// TODO this likely has off-by-one errors at the ends.
+
+#if 0
+	int wx = sx;
+	while (fabs(wx - sx) <= dx) {
+		double t = (wx - sx) / dx;
+		wx += sign(dx);
+		point_t pt = { sx + t * dx, sy + t * dy };
+		pts[pts_top++] = pt;
 	}
 
-	if (dy != 0.0) {
-		for (int wy = ceil(miny); wy <= floor(maxy); ++wy) {
-			double t = (wy - sy) / dy;
-			ts[ts_top++] = t;
+	int wy = sy;
+	while (fabs(wy - sy) <= dy) {
+		double t = (wy - sy) / dy;
+		wy += sign(dy);
+		point_t pt = { sx + t * dx, sy + t * dy };
+		pts[pts_top++] = pt;
+	}
+#endif
+
+	int wx = sx, wy = sy;
+	double xt = (wx - sx) / dx, yt = (wy - sy) / dy;
+	while (fabs(wx - sx) <= dx || fabs(wy - sy) <= dy) {
+		double t;
+		if (xt <= yt) {
+			t = xt;
+			wx += sign(dx);
+			xt = (wx - sx) / dx;
+		} else {
+			t = yt;
+			wy += sign(dy);
+			yt = (wy - sy) / dy;
 		}
+		point_t pt = { sx + t * dx, sy + t * dy };
+		pts[pts_top++] = pt;
 	}
 
-	for (int i = 0; i < ts_top; ++i) {
-		double t = ts[i];
-		printf("t = %f, f(t) = (%f, %f)\n", t, sx + t * dx, sy + t * dy);
+	for (int i = 0; i < pts_top; ++i) {
+		point_t pt = pts[i];
+		printf("f(t) = (%f, %f)\n", pt.x, pt.y);
 	}
 }
 
