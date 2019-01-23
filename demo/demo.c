@@ -49,13 +49,46 @@ static void bresenham(int x0, int y0, int x1, int y1)
 	}
 }
 
-static void write_pgm(void)
+static uint16_t u16(uint16_t v)
 {
-	printf("P2\n%u %u 255\n", WIDTH, HEIGHT);
-	for (uint32_t r = 0; r < HEIGHT; ++r) {
-		for (uint32_t c = 0; c < WIDTH; ++c)
-			printf("%u ", image[WIDTH * r + c]);
-		printf("\n");
+	// TODO
+	return v;
+}
+
+static uint32_t u32(uint32_t v)
+{
+	// TODO
+	return v;
+}
+
+static int32_t i32(int32_t v)
+{
+ // TODO
+ return v;
+}
+
+static void write_bmp(void)
+{
+	char hdr[54] = { 0 };
+	// Header
+	hdr[0] = 'B';
+	hdr[1] = 'M';
+	*(uint32_t *) &hdr[2] = u32(54 + 3 * WIDTH * HEIGHT); // size of file
+	*(uint32_t *) &hdr[10] = u32(54); // offset to image data
+	// InfoHeader
+	*(uint32_t *) &hdr[14] = u32(40); // size of InfoHeader
+	*( int32_t *) &hdr[18] = i32(WIDTH);
+	*( int32_t *) &hdr[22] = i32(HEIGHT);
+	*(uint16_t *) &hdr[26] = u16(1); // color planes
+	*(uint16_t *) &hdr[28] = u16(24); // bpp
+	fwrite(hdr, 1, 54, stdout);
+	for (int y = 0; y < HEIGHT; ++y) {
+		for (int x = 0; x < WIDTH; ++x) {
+			unsigned char c = image[WIDTH * y + x];
+			fputc(c, stdout); // r
+			fputc(c, stdout); // g
+			fputc(c, stdout); // b
+		}
 	}
 }
 
@@ -72,6 +105,6 @@ int main(int argc, char const *argv[])
 			(int) (mx + xd * ri), (int) (my + yd * ri),
 			(int) (mx + xd * ro), (int) (my + yd * ro));
 	}
-	write_pgm();
+	write_bmp();
 	return EXIT_SUCCESS;
 }
