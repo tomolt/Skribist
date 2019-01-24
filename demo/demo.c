@@ -53,6 +53,11 @@ typedef struct {
 static int16_t accum[WIDTH * HEIGHT];
 static uint8_t image[WIDTH * HEIGHT];
 
+static point_t cns_point(double x, double y)
+{
+	return (point_t) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
+}
+
 static line_t cns_line(point_t beg, point_t end)
 {
 	return (line_t) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
@@ -189,12 +194,20 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	point_t pt1 = { 98.3, 5.4 };
-	point_t pt2 = { 26.1, 200.6 };
-	point_t pt3 = { 123.9, 132.8 };
+	point_t pt1 = cns_point(-0.25, -0.25);
+	point_t pt2 = cns_point( 0.25, -0.25);
+	point_t pt3 = cns_point( 0.0,  0.25);
 	raster_line(cns_line(pt1, pt2));
 	raster_line(cns_line(pt2, pt3));
 	raster_line(cns_line(pt3, pt1));
+
+	point_t pt4 = cns_point(-0.125, -0.125);
+	point_t pt5 = cns_point( 0.0,  0.125);
+	point_t pt6 = cns_point( 0.125, -0.125);
+	raster_line(cns_line(pt4, pt5));
+	raster_line(cns_line(pt5, pt6));
+	raster_line(cns_line(pt6, pt4));
+
 	gather();
 	write_bmp();
 	return EXIT_SUCCESS;
