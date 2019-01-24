@@ -26,8 +26,8 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
-#define WIDTH 128
-#define HEIGHT 128
+#define WIDTH 256
+#define HEIGHT 256
 
 // Please update glossary when messing with units.
 typedef struct {
@@ -53,9 +53,9 @@ typedef struct {
 static int16_t accum[WIDTH * HEIGHT];
 static uint8_t image[WIDTH * HEIGHT];
 
-static line_t cns_line(double bx, double by, double ex, double ey)
+static line_t cns_line(point_t beg, point_t end)
 {
-	return (line_t) { bx, by, ex - bx, ey - by };
+	return (line_t) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
 }
 
 static dot_t cns_dot(point_t beg, point_t end)
@@ -78,7 +78,7 @@ static void raster_dot(dot_t dot)
 
 /*
 
-raster_line() is intended to take in a single line and output a sequence of dots.
+raster_line() is intended to take in a single line and pass it on as a sequence of dots.
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
@@ -87,18 +87,35 @@ orders them based on the variable scalar in the line equation.
 
 static void raster_line(line_t line)
 {
-	assert(line.dx != 0.0);
-	assert(line.dy != 0.0);
+	double sx, sy; // step size along each axis
+	double xt, yt; // t of next vertical / horizontal intersection
+
+	if (line.dx != 0.0) {
+		sx = fabs(1.0 / line.dx);
+		if (line.dx > 0.0) {
+			xt = sx * (ceil(line.ox) - line.ox);
+		} else {
+			xt = sx * (line.ox - floor(line.ox));
+		}
+	} else {
+		sx = 0.0;
+		xt = 9.9;
+	}
+
+	if (line.dy != 0.0) {
+		sy = fabs(1.0 / line.dy);
+		if (line.dy > 0.0) {
+			yt = sy * (ceil(line.oy) - line.oy);
+		} else {
+			yt = sy * (line.oy - floor(line.oy));
+		}
+	} else {
+		sy = 0.0;
+		yt = 9.9;
+	}
 
 	double prev_t = 0.0;
 	point_t prev_pt = { line.ox, line.oy };
-
-	double sx = fabs(1.0 / line.dx); // step size along x
-	double sy = fabs(1.0 / line.dy); // step size along y
-	double xt = sx * (line.dx >= 0.0 ?
-		ceil(line.ox) - line.ox : line.ox - floor(line.ox)); // t of next vertical intersection
-	double yt = sy * (line.dy >= 0.0 ?
-		ceil(line.oy) - line.oy : line.oy - floor(line.oy)); // t of next horizontal intersection
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
@@ -168,9 +185,13 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	raster_line(cns_line(5.2, 3.8, 100.8, 23.4));
-	raster_line(cns_line(100.8, 23.4, 50.1, 98.3));
-	raster_line(cns_line(50.1, 98.3, 5.2, 3.8));
+	int qw = WIDTH / 4, qh = HEIGHT / 4;
+	point_t pt1 = { 2 * qw + 0.5, 3 * qh + 0.5 };
+	point_t pt2 = { 1 * qw + 0.5, 1 * qh + 0.5 };
+	point_t pt3 = { 3 * qw + 0.5, 1 * qh + 0.5 };
+	raster_line(cns_line(pt1, pt2));
+	raster_line(cns_line(pt2, pt3));
+	raster_line(cns_line(pt3, pt1));
 	gather();
 	write_bmp();
 	return EXIT_SUCCESS;
