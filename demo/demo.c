@@ -42,8 +42,12 @@ typedef struct {
 } line_t;
 
 typedef struct {
-	int px, py;
-	point_t pts[2];
+	int px;
+	int py;
+	int bx;
+	int by;
+	int ex;
+	int ey;
 } dot_t;
 
 static int16_t accum[WIDTH * HEIGHT];
@@ -54,13 +58,22 @@ static line_t cns_line(double bx, double by, double ex, double ey)
 	return (line_t) { bx, by, ex - bx, ey - by };
 }
 
-static void raster_dot(point_t beg, point_t end)
+static dot_t cns_dot(point_t beg, point_t end)
 {
-	int px = min(beg.x, end.x) + 0.001;
-	int py = min(beg.y, end.y) + 0.001;
-	int winding = sign(beg.y - end.y); // FIXME
-	int cover = round(fabs(beg.y - end.y) * 255.0);
-	accum[WIDTH * py + px] += winding * cover;
+	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
+	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
+	int bx = round((beg.x - px) * 255.0);
+	int by = round((beg.y - py) * 255.0);
+	int ex = round((end.x - px) * 255.0);
+	int ey = round((end.y - py) * 255.0);
+	return (dot_t) { px, py, bx, by, ex, ey };
+}
+
+static void raster_dot(dot_t dot)
+{
+	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
+	int cover = abs(dot.ey - dot.by);
+	accum[WIDTH * dot.py + dot.px] += winding * cover;
 }
 
 /*
@@ -96,15 +109,18 @@ static void raster_line(line_t line)
 			t = yt;
 			yt += sy;
 		}
+
 		if (t == prev_t) continue;
+
 		point_t pt = { line.ox + t * line.dx, line.oy + t * line.dy };
-		raster_dot(prev_pt, pt);
+		raster_dot(cns_dot(prev_pt, pt));
+
 		prev_t = t;
 		prev_pt = pt;
 	}
 
 	point_t last_pt = { line.ox + line.dx, line.oy + line.dy };
-	raster_dot(prev_pt, last_pt);
+	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
 static void gather(void)
