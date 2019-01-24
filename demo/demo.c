@@ -62,20 +62,12 @@ static void split_line(line_t line)
 	assert(dx != 0.0);
 	assert(dy != 0.0);
 
-	double sx = 1.0 / dx; // step size along x
-	double sy = 1.0 / dy; // step size along y
-	double xt = (ceil(ox) - ox) / dx; // t of next vertical intersection
-	double yt = (ceil(oy) - oy) / dy; // t of next horizontal intersection
-
-	if (dx < 0.0) {
-		sx = -sx;
-		xt = (floor(ox) - ox) / dx;
-	}
-
-	if (dy < 0.0) {
-		sy = -sy;
-		yt = (floor(oy) - oy) / dy;
-	}
+	double sx = fabs(1.0 / dx); // step size along x
+	double sy = fabs(1.0 / dy); // step size along y
+	double xt = sx * (dx >= 0.0 ?
+		ceil(ox) - ox : ox - floor(ox)); // t of next vertical intersection
+	double yt = sy * (dy >= 0.0 ?
+		ceil(oy) - oy : oy - floor(oy)); // t of next horizontal intersection
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
