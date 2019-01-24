@@ -34,41 +34,31 @@ static void split_line(line_t line)
 	assert(dx != 0.0);
 	assert(dy != 0.0);
 
-	// TODO this likely has off-by-one errors at the ends.
-
-#if 0
-	int wx = sx;
-	while (fabs(wx - sx) <= dx) {
-		double t = (wx - sx) / dx;
-		wx += sign(dx);
-		point_t pt = { sx + t * dx, sy + t * dy };
-		pts[pts_top++] = pt;
-	}
-
-	int wy = sy;
-	while (fabs(wy - sy) <= dy) {
-		double t = (wy - sy) / dy;
-		wy += sign(dy);
-		point_t pt = { sx + t * dx, sy + t * dy };
-		pts[pts_top++] = pt;
-	}
-#endif
-
-	int wx = sx, wy = sy;
-	double xt = (wx - sx) / dx, yt = (wy - sy) / dy;
-	while (fabs(wx - sx) <= dx || fabs(wy - sy) <= dy) {
-		double t;
-		if (xt <= yt) {
-			t = xt;
-			wx += sign(dx);
-			xt = (wx - sx) / dx;
+	if (dx >= 0.0) {
+		if (dy >= 0.0) {
+			double xt = (ceil(sx) - sx) / dx, yt = (ceil(sy) - sy) / dy;
+			while (xt <= 1.0 || yt <= 1.0) {
+				double t;
+				if (xt == yt) {
+					t = xt;
+					xt += 1.0 / dx;
+					yt += 1.0 / dy;
+				} else if (xt < yt) {
+					t = xt;
+					xt += 1.0 / dx;
+				} else {
+					t = yt;
+					yt += 1.0 / dy;
+				}
+				point_t pt = { sx + t * dx, sy + t * dy };
+				pts[pts_top++] = pt;
+			}
 		} else {
-			t = yt;
-			wy += sign(dy);
-			yt = (wy - sy) / dy;
 		}
-		point_t pt = { sx + t * dx, sy + t * dy };
-		pts[pts_top++] = pt;
+	} else {
+		if (dy >= 0.0) {
+		} else {
+		}
 	}
 
 	for (int i = 0; i < pts_top; ++i) {
@@ -112,7 +102,7 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	line_t line = { { { 5.5, 3.5 }, { 182.3, 101.1 } } };
+	line_t line = { { { 5.1, 3.2 }, { 182.3, 101.4 } } };
 	split_line(line);
 	// write_bmp();
 	return EXIT_SUCCESS;
