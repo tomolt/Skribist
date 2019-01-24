@@ -70,6 +70,7 @@ static void raster_line(line_t line)
 	assert(line.dx != 0.0);
 	assert(line.dy != 0.0);
 
+	double prev_t = 0.0;
 	point_t prev_pt = { line.ox, line.oy };
 
 	double sx = fabs(1.0 / line.dx); // step size along x
@@ -81,19 +82,17 @@ static void raster_line(line_t line)
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
-		if (xt == yt) {
-			t = xt;
-			xt += sx;
-			yt += sy;
-		} else if (xt < yt) {
+		if (xt < yt) {
 			t = xt;
 			xt += sx;
 		} else {
 			t = yt;
 			yt += sy;
 		}
+		if (t == prev_t) continue;
 		point_t pt = { line.ox + t * line.dx, line.oy + t * line.dy };
 		raster_dot(prev_pt, pt);
+		prev_t = t;
 		prev_pt = pt;
 	}
 
@@ -136,7 +135,7 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	line_t line = { 5.1, 101.4, 177.2, -99.8 };
+	line_t line = { 0.0, HEIGHT - 1, 177.2, -99.8 };
 	raster_line(line);
 	// write_bmp();
 	return EXIT_SUCCESS;
