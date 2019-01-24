@@ -72,8 +72,12 @@ static dot_t cns_dot(point_t beg, point_t end)
 static void raster_dot(dot_t dot)
 {
 	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
-	int cover = abs(dot.ey - dot.by);
-	accum[WIDTH * dot.py + dot.px] += winding * cover;
+	int cover = abs(dot.ey - dot.by); // in the range 0 - 255
+	int total = winding * cover;
+	int width = 510 + abs(dot.ex - dot.bx) - 2 * max(dot.bx, dot.ex); // in the range 0 - 510
+	int value = total * width / 510;
+	accum[WIDTH * dot.py + dot.px] += value;
+	accum[WIDTH * dot.py + dot.px + 1] += total - value;
 }
 
 /*
@@ -185,10 +189,9 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	int qw = WIDTH / 4, qh = HEIGHT / 4;
-	point_t pt1 = { 2 * qw + 0.5, 3 * qh + 0.5 };
-	point_t pt2 = { 1 * qw + 0.5, 1 * qh + 0.5 };
-	point_t pt3 = { 3 * qw + 0.5, 1 * qh + 0.5 };
+	point_t pt1 = { 98.3, 5.4 };
+	point_t pt2 = { 26.1, 200.6 };
+	point_t pt3 = { 123.9, 132.8 };
 	raster_line(cns_line(pt1, pt2));
 	raster_line(cns_line(pt2, pt3));
 	raster_line(cns_line(pt3, pt1));
