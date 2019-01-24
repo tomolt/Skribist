@@ -154,7 +154,6 @@ static void gather(void)
 	int32_t acc = 0;
 	for (int i = 0; i < WIDTH * HEIGHT; ++i) {
 		acc += accum[i];
-		fprintf(stderr, "acc[%d] = %d\n", i, acc);
 		image[i] = min(abs(acc), 255);
 	}
 }
