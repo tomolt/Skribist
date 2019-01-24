@@ -35,39 +35,49 @@ typedef struct {
 } point_t;
 
 typedef struct {
-	point_t pts[2];
+	double ox; // x of origin point
+	double oy; // y of origin point
+	double dx; // difference along x
+	double dy; // difference along y
 } line_t;
 
+typedef struct {
+	int px, py;
+	point_t pts[2];
+} dot_t;
+
+static int16_t accum[WIDTH * HEIGHT];
 static uint8_t image[WIDTH * HEIGHT];
+
+static void raster_dot(point_t beg, point_t end)
+{
+	// int winding = ? 1 : -1;
+	// accum[WIDTH * py + px] = winding * 255;
+	printf("(%f, %f) -> (%f, %f)\n", beg.x, beg.y, end.x, end.y);
+}
 
 /*
 
-split_line() is intended to take in a single line and output a sequence of dots.
+raster_line() is intended to take in a single line and output a sequence of dots.
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
 
 */
 
-static void split_line(line_t line)
+static void raster_line(line_t line)
 {
-	double ox = line.pts[0].x; // x of origin point of the line
-	double oy = line.pts[0].y; // y of origin point of the line
-	double dx = line.pts[1].x - line.pts[0].x; // difference along x
-	double dy = line.pts[1].y - line.pts[0].y; // difference along y
+	assert(line.dx != 0.0);
+	assert(line.dy != 0.0);
 
-	point_t pts[1000];
-	int pts_top = 0;
+	point_t prev_pt = { line.ox, line.oy };
 
-	assert(dx != 0.0);
-	assert(dy != 0.0);
-
-	double sx = fabs(1.0 / dx); // step size along x
-	double sy = fabs(1.0 / dy); // step size along y
-	double xt = sx * (dx >= 0.0 ?
-		ceil(ox) - ox : ox - floor(ox)); // t of next vertical intersection
-	double yt = sy * (dy >= 0.0 ?
-		ceil(oy) - oy : oy - floor(oy)); // t of next horizontal intersection
+	double sx = fabs(1.0 / line.dx); // step size along x
+	double sy = fabs(1.0 / line.dy); // step size along y
+	double xt = sx * (line.dx >= 0.0 ?
+		ceil(line.ox) - line.ox : line.ox - floor(line.ox)); // t of next vertical intersection
+	double yt = sy * (line.dy >= 0.0 ?
+		ceil(line.oy) - line.oy : line.oy - floor(line.oy)); // t of next horizontal intersection
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
@@ -82,14 +92,13 @@ static void split_line(line_t line)
 			t = yt;
 			yt += sy;
 		}
-		point_t pt = { ox + t * dx, oy + t * dy };
-		pts[pts_top++] = pt;
+		point_t pt = { line.ox + t * line.dx, line.oy + t * line.dy };
+		raster_dot(prev_pt, pt);
+		prev_pt = pt;
 	}
 
-	for (int i = 0; i < pts_top; ++i) {
-		point_t pt = pts[i];
-		printf("f(t) = (%f, %f)\n", pt.x, pt.y);
-	}
+	point_t last_pt = { line.ox + line.dx, line.oy + line.dy };
+	raster_dot(prev_pt, last_pt);
 }
 
 static void fmt_le_dword(char *buf, uint32_t v)
@@ -127,8 +136,8 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	line_t line = { { { 5.1, 101.4 }, { 182.3, 3.2 } } };
-	split_line(line);
+	line_t line = { 5.1, 101.4, 177.2, -99.8 };
+	raster_line(line);
 	// write_bmp();
 	return EXIT_SUCCESS;
 }
