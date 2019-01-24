@@ -23,10 +23,10 @@ static uint8_t image[WIDTH * HEIGHT];
 
 static void split_line(line_t line)
 {
-	double sx = line.pts[0].x;
-	double sy = line.pts[0].y;
-	double dx = line.pts[1].x - line.pts[0].x;
-	double dy = line.pts[1].y - line.pts[0].y;
+	double ox = line.pts[0].x; // x of origin point of the line
+	double oy = line.pts[0].y; // y of origin point of the line
+	double dx = line.pts[1].x - line.pts[0].x; // difference along x
+	double dy = line.pts[1].y - line.pts[0].y; // difference along y
 
 	point_t pts[1000];
 	int pts_top = 0;
@@ -34,23 +34,27 @@ static void split_line(line_t line)
 	assert(dx != 0.0);
 	assert(dy != 0.0);
 
+	double sx = 1.0 / dx; // step size along x
+	double sy = 1.0 / dy; // step size along y
+
 	if (dx >= 0.0) {
 		if (dy >= 0.0) {
-			double xt = (ceil(sx) - sx) / dx, yt = (ceil(sy) - sy) / dy;
+			double xt = (ceil(ox) - ox) / dx; // t of next vertical intersection
+			double yt = (ceil(oy) - oy) / dy; // t of next horizontal intersection
 			while (xt <= 1.0 || yt <= 1.0) {
 				double t;
 				if (xt == yt) {
 					t = xt;
-					xt += 1.0 / dx;
-					yt += 1.0 / dy;
+					xt += sx;
+					yt += sy;
 				} else if (xt < yt) {
 					t = xt;
-					xt += 1.0 / dx;
+					xt += sx;
 				} else {
 					t = yt;
-					yt += 1.0 / dy;
+					yt += sy;
 				}
-				point_t pt = { sx + t * dx, sy + t * dy };
+				point_t pt = { ox + t * dx, oy + t * dy };
 				pts[pts_top++] = pt;
 			}
 		} else {
