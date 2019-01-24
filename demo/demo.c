@@ -1,3 +1,21 @@
+/*
+
+---- GLOSSARY ----
+
+I am of firm belief that adequate imaginative nomenclature is the single
+most important key to the expressing and understanding of complex concepts.
+
+"bezier": a quadratic bezier curve.
+"line": a simple, straight line.
+"dot": a short line that only spans one pixel (think 'dotted line').
+"point": a point in 2d space, where one unit equals one pixel.
+"cover": the height that a particular dot span within one pixel.
+this term was inherited from Anti-Grain Geometry and cl-vectors.
+"area": the signed area between a line and the left edge of the raster.
+this term was inherited from Anti-Grain Geometry and cl-vectors.
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -11,6 +29,7 @@
 #define WIDTH 256
 #define HEIGHT 256
 
+// Please update glossary when messing with units.
 typedef struct {
 	double x, y;
 } point_t;
@@ -20,6 +39,15 @@ typedef struct {
 } line_t;
 
 static uint8_t image[WIDTH * HEIGHT];
+
+/*
+
+split_line() is intended to take in a single line and output a sequence of dots.
+Its algorithm is actually fairly simple: It computes the exact intervals at
+which the line crosses a horizontal or vertical pixel edge respectively, and
+orders them based on the variable scalar in the line equation.
+
+*/
 
 static void split_line(line_t line)
 {
