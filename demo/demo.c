@@ -34,11 +34,10 @@ static void split_line(line_t line)
 	assert(dx != 0.0);
 	assert(dy != 0.0);
 
-	double sx = 1.0 / dx; // step size along x
-	double sy = 1.0 / dy; // step size along y
-
 	if (dx >= 0.0) {
 		if (dy >= 0.0) {
+			double sx = 1.0 / dx; // step size along x
+			double sy = 1.0 / dy; // step size along y
 			double xt = (ceil(ox) - ox) / dx; // t of next vertical intersection
 			double yt = (ceil(oy) - oy) / dy; // t of next horizontal intersection
 			while (xt <= 1.0 || yt <= 1.0) {
@@ -62,6 +61,26 @@ static void split_line(line_t line)
 	} else {
 		if (dy >= 0.0) {
 		} else {
+			double sx = -1.0 / dx; // step size along x
+			double sy = -1.0 / dy; // step size along y
+			double xt = (floor(ox) - ox) / dx; // t of next vertical intersection
+			double yt = (floor(oy) - oy) / dy; // t of next horizontal intersection
+			while (xt <= 1.0 || yt <= 1.0) {
+				double t;
+				if (xt == yt) {
+					t = xt;
+					xt += sx;
+					yt += sy;
+				} else if (xt < yt) {
+					t = xt;
+					xt += sx;
+				} else {
+					t = yt;
+					yt += sy;
+				}
+				point_t pt = { ox + t * dx, oy + t * dy };
+				pts[pts_top++] = pt;
+			}
 		}
 	}
 
@@ -106,7 +125,7 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	line_t line = { { { 5.1, 3.2 }, { 182.3, 101.4 } } };
+	line_t line = { { { 182.3, 101.4 }, { 5.1, 3.2 } } };
 	split_line(line);
 	// write_bmp();
 	return EXIT_SUCCESS;
