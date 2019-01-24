@@ -26,8 +26,8 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
-#define WIDTH 256
-#define HEIGHT 256
+#define WIDTH 128
+#define HEIGHT 128
 
 // Please update glossary when messing with units.
 typedef struct {
@@ -49,11 +49,18 @@ typedef struct {
 static int16_t accum[WIDTH * HEIGHT];
 static uint8_t image[WIDTH * HEIGHT];
 
+static line_t cns_line(double bx, double by, double ex, double ey)
+{
+	return (line_t) { bx, by, ex - bx, ey - by };
+}
+
 static void raster_dot(point_t beg, point_t end)
 {
-	// int winding = ? 1 : -1;
-	// accum[WIDTH * py + px] = winding * 255;
-	printf("(%f, %f) -> (%f, %f)\n", beg.x, beg.y, end.x, end.y);
+	int px = min(beg.x, end.x) + 0.001;
+	int py = min(beg.y, end.y) + 0.001;
+	int winding = sign(beg.y - end.y); // FIXME
+	int cover = round(fabs(beg.y - end.y) * 255.0);
+	accum[WIDTH * py + px] += winding * cover;
 }
 
 /*
@@ -100,6 +107,16 @@ static void raster_line(line_t line)
 	raster_dot(prev_pt, last_pt);
 }
 
+static void gather(void)
+{
+	int32_t acc = 0;
+	for (int i = 0; i < WIDTH * HEIGHT; ++i) {
+		acc += accum[i];
+		fprintf(stderr, "acc[%d] = %d\n", i, acc);
+		image[i] = min(abs(acc), 255);
+	}
+}
+
 static void fmt_le_dword(char *buf, uint32_t v)
 {
 	buf[0] = v & 0xFF;
@@ -135,8 +152,10 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	line_t line = { 0.0, HEIGHT - 1, 177.2, -99.8 };
-	raster_line(line);
-	// write_bmp();
+	raster_line(cns_line(5.2, 3.8, 100.8, 23.4));
+	raster_line(cns_line(100.8, 23.4, 50.1, 98.3));
+	raster_line(cns_line(50.1, 98.3, 5.2, 3.8));
+	gather();
+	write_bmp();
 	return EXIT_SUCCESS;
 }
