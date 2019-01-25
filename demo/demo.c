@@ -125,9 +125,11 @@ static void raster_line(line_t line)
 
 	double prev_t = 0.0;
 	point_t prev_pt = { line.ox, line.oy };
+	point_t pt = { line.ox, line.oy };
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
+
 		if (xt < yt) {
 			t = xt;
 			xt += sx;
@@ -138,7 +140,10 @@ static void raster_line(line_t line)
 
 		if (t == prev_t) continue;
 
-		point_t pt = { line.ox + t * line.dx, line.oy + t * line.dy };
+		double td = t - prev_t;
+		pt.x += td * line.dx;
+		pt.y += td * line.dy;
+
 		raster_dot(cns_dot(prev_pt, pt));
 
 		prev_t = t;
