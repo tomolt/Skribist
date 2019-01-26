@@ -16,6 +16,16 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 
 */
 
+/*
+
+You may notice that most computations right now are performed on floating-point numbers.
+Once the exact algorithmtic implementation is in place and locked down, these will
+(hopefully) be converted to integer operations. Among other things, this would allow for
+more stability in the output and if bounded correctly can result in code that is much
+easier to parallelize with SIMD instructions.
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -56,7 +66,7 @@ typedef struct {
 	point_t end;
 } bezier_t;
 
-static int16_t accum[WIDTH * HEIGHT];
+static int16_t accum[WIDTH * HEIGHT]; // This needs a better name
 static uint8_t image[WIDTH * HEIGHT];
 
 static point_t cns_point(double x, double y)
@@ -97,6 +107,13 @@ raster_line() is intended to take in a single line and pass it on as a sequence 
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
+
+*/
+
+/*
+
+At some point, raster_line() needs to be redone - there are *many* ways in which
+it could be drastically simplified still.
 
 */
 
@@ -160,6 +177,16 @@ static void raster_line(line_t line)
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
+/*
+
+All of these bezier helper functions are currently implemented pretty generically.
+But seeing how we for example only use hard-coded t = 0.5 this is redundant.
+Also, once the points of bezier curves are represented in relative coordinates
+to each other, interp_points() and manhattan_distance() should just operate
+on lines for simplicity.
+
+*/
+
 static point_t interp_bezier(bezier_t bezier, double t)
 {
 	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
@@ -211,6 +238,14 @@ static void raster_bezier(bezier_t bezier)
 		raster_bezier(segments[1]); // in pathological cases.
 	}
 }
+
+/*
+
+gather() right now is mostly a stub. Further on in development it should
+also do conversion to user-specified pixel formats, simple color fill,
+gamma correction and sub-pixel rendering (if enabled).
+
+*/
 
 static void gather(void)
 {
