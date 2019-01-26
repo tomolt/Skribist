@@ -15,11 +15,33 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+
+#define xU16_(b) ((b)[0] << 8 | (b)[1])
+#define xU16(v) xU16_((uint8_t *) &(v))
+#define xU32_(b) ((b)[0] << 24 | (b)[1] << 16 | (b)[2] << 8 | (b)[3])
+#define xU32(v) xU32_((uint8_t *) &(v))
+
+typedef struct {
+	char tag[4];
+	uint32_t checksum;
+	uint32_t offset;
+	uint32_t length;
+} TableInfo;
+
+typedef struct {
+	uint32_t scalar_type;
+	uint16_t num_tables;
+	uint16_t search_range;
+	uint16_t entry_selector;
+	uint16_t range_shift;
+	TableInfo tables[];
+} OffsetTable;
 
 int main(int argc, char const *argv[])
 {
@@ -29,10 +51,10 @@ int main(int argc, char const *argv[])
 	unsigned char *mapped = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
 	close(descr);
 
-	for (int i = 0; i < 30; ++i) {
-		char name[5] = { 0 };
-		memcpy(name, &mapped[12 + 16 * i], 4);
-		printf("%s\n", name);
+	OffsetTable *offt = (OffsetTable *) mapped;
+
+	for (int i = 0; i < xU16(offt->num_tables); ++i) {
+		printf("%.4s\n", offt->tables[i].tag);
 	}
 
 	munmap(mapped, stat.st_size);
