@@ -30,8 +30,6 @@ Maxim Shemanarev, "Anti-Grain Geometry - Adaptive Subdivision of Bezier Curves",
 	http://www.antigrain.com/research/adaptive_bezier/
 Maxim Shemanarev, "Anti-Grain Geometry - Texts Rasterization Exposures",
 	http://www.antigrain.com/research/font_rasterization/
-V. Gaultney, M. Hosken, A. Ward, "An Introduction to TrueType Fonts: A look inside the TTF format",
-	https://scripts.sil.org/iws-chapter08
 
 */
 

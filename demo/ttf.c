@@ -12,6 +12,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 */
 
+/*
+
+---- REFERENCES ----
+
+V. Gaultney, M. Hosken, A. Ward, "An Introduction to TrueType Fonts: A look inside the TTF format",
+	https://scripts.sil.org/iws-chapter08
+Steve Hanov, "Let's read a Truetype font file from scratch",
+	http://stevehanov.ca/blog/index.php?id=143
+Apple Inc., "TrueType Reference Manual",
+	https://developer.apple.com/fonts/TrueType-Reference-Manual/
+Eric S. Raymond, "The Lost Art of Structure Packing",
+	http://www.catb.org/esr/structure-packing/
+MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
+	https://www.mikroe.com/blog/packed-structures-make-memory-feel-safe
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +52,7 @@ typedef struct {
 } TableInfo;
 
 typedef struct {
-	uint32_t scalar_type;
+	uint32_t scaler_type;
 	uint16_t num_tables;
 	uint16_t search_range;
 	uint16_t entry_selector;
