@@ -56,7 +56,7 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 /*
 
 You may notice that most computations right now are performed on floating-point numbers.
-Once the exact algorithmtic implementation is in place and locked down, these will
+Once the exact algorithmic implementation is in place and locked down, these will
 (hopefully) be converted to integer operations. Among other things, this would allow for
 more stability in the output and if bounded correctly can result in code that is much
 easier to parallelize with SIMD instructions.
