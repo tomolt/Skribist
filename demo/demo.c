@@ -50,6 +50,12 @@ typedef struct {
 	int ey;
 } dot_t;
 
+typedef struct {
+	point_t beg;
+	point_t ctrl;
+	point_t end;
+} bezier_t;
+
 static int16_t accum[WIDTH * HEIGHT];
 static uint8_t image[WIDTH * HEIGHT];
 
@@ -154,6 +160,58 @@ static void raster_line(line_t line)
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
+static point_t interp_bezier(bezier_t bezier, double t)
+{
+	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
+	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
+	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
+	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
+	double x = ax * t * t + bx * t + bezier.beg.x;
+	double y = ay * t * t + by * t + bezier.beg.y;
+	return (point_t) { x, y };
+}
+
+static point_t interp_points(point_t a, point_t b, double t)
+{
+	double s = 1.0 - t;
+	double x = s * a.x + t * b.x;
+	double y = s * a.y + t * b.y;
+	return (point_t) { x, y };
+}
+
+static double manhattan_distance(point_t a, point_t b)
+{
+	return fabs(a.x - b.x) + fabs(a.y - b.y);
+}
+
+static int is_flat(bezier_t bezier)
+{
+	point_t mid = interp_points(bezier.beg, bezier.end, 0.5);
+	double dist = manhattan_distance(bezier.ctrl, mid);
+	return dist <= 1.0;
+}
+
+static void split_bezier(bezier_t bezier, bezier_t segments[2])
+{
+	point_t pivot = interp_bezier(bezier, 0.5);
+	point_t ctrl0 = interp_points(bezier.beg, bezier.ctrl, 0.5);
+	point_t ctrl1 = interp_points(bezier.ctrl, bezier.end, 0.5);
+	segments[0] = (bezier_t) { bezier.beg, ctrl0, pivot };
+	segments[1] = (bezier_t) { pivot, ctrl1, bezier.end };
+}
+
+static void raster_bezier(bezier_t bezier)
+{
+	if (is_flat(bezier)) {
+		raster_line(cns_line(bezier.beg, bezier.end));
+	} else {
+		bezier_t segments[2];
+		split_bezier(bezier, segments);
+		raster_bezier(segments[0]); // TODO don't overflow the stack
+		raster_bezier(segments[1]); // in pathological cases.
+	}
+}
+
 static void gather(void)
 {
 	int32_t acc = 0;
@@ -198,19 +256,17 @@ static void write_bmp(void)
 
 int main(int argc, char const *argv[])
 {
-	point_t pt1 = cns_point(-0.25, -0.25);
-	point_t pt2 = cns_point( 0.25, -0.25);
-	point_t pt3 = cns_point( 0.0,  0.25);
-	raster_line(cns_line(pt1, pt2));
-	raster_line(cns_line(pt2, pt3));
-	raster_line(cns_line(pt3, pt1));
+	point_t beg1  = cns_point(-0.25, 0.0);
+	point_t ctrl1 = cns_point(0.0, 0.5);
+	point_t end1  = cns_point(0.25, 0.0);
+	bezier_t bez1 = { beg1, ctrl1, end1 };
+	raster_bezier(bez1);
 
-	point_t pt4 = cns_point(-0.125, -0.125);
-	point_t pt5 = cns_point( 0.0,  0.125);
-	point_t pt6 = cns_point( 0.125, -0.125);
-	raster_line(cns_line(pt4, pt5));
-	raster_line(cns_line(pt5, pt6));
-	raster_line(cns_line(pt6, pt4));
+	point_t beg2  = cns_point(0.25, 0.0);
+	point_t ctrl2 = cns_point(0.0, -0.5);
+	point_t end2  = cns_point(-0.25, 0.0);
+	bezier_t bez2 = { beg2, ctrl2, end2 };
+	raster_bezier(bez2);
 
 	gather();
 	write_bmp();
