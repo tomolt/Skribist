@@ -3,7 +3,7 @@
 ---- GLOSSARY ----
 
 I am of firm belief that adequate imaginative nomenclature is the single
-most important key to the expressing and understanding of complex concepts.
+most important key to expressing and understanding complex concepts.
 
 "bezier": a quadratic bezier curve.
 "line": a simple, straight line.
@@ -113,7 +113,8 @@ orders them based on the variable scalar in the line equation.
 /*
 
 At some point, raster_line() needs to be redone - there are *many* ways in which
-it could be drastically simplified still.
+it could be drastically simplified still. Most importantly, it should track the
+integer pixel coordinates by itself without having to rely on the hacky cns_dot() thing.
 
 */
 
