@@ -76,6 +76,27 @@ easier to parallelize with SIMD instructions.
 #define WIDTH 256
 #define HEIGHT 256
 
+typedef enum {
+	BW_1_BIT,
+	ALPHA_8_UINT,
+	GRAY_8_SRGB,
+	RGB_5_6_5_UINT,
+	BGR_5_6_5_UINT,
+	RGB_24_UINT,
+	RGB_24_SRGB,
+	BGR_24_UINT,
+	BGR_24_SRGB,
+	RGBA_32_UINT,
+	RGBA_32_SRGB,
+	BGRA_32_UINT,
+	BGRA_32_SRGB,
+	ALPHA_16_UINT,
+	RGB_48_UINT,
+	RGBA_64_UINT,
+	RGB_96_FLOAT,
+	RGBA_128_FLOAT
+} format_t;
+
 // Please update glossary when messing with units.
 typedef struct {
 	double x, y;
