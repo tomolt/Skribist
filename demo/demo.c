@@ -1,5 +1,42 @@
 /*
 
+Copyright 2019 Thomas Oltmann
+
+---- LICENSE ----
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+*/
+
+/*
+
+---- REFERENCES ----
+
+Sean Barrett, "How the stb_truetype Anti-Aliased Software Rasterizer v2 Works",
+	https://nothings.org/gamedev/rasterize/
+CL-VECTORS documentation, "9. The cl-aa algorithm",
+	http://projects.tuxee.net/cl-vectors/section-the-cl-aa-algorithm
+Ralph Levien, "Inside the fastest font renderer in the world",
+	https://medium.com/@raphlinus/inside-the-fastest-font-renderer-in-the-world-75ae5270c445
+Maxim Shemanarev, "Anti-Grain Geometry - Interpolation with Bezier Curves",
+	http://www.antigrain.com/research/bezier_interpolation/
+Maxim Shemanarev, "Anti-Grain Geometry - Gamma Correction",
+	http://www.antigrain.com/research/gamma_correction/
+Maxim Shemanarev, "Anti-Grain Geometry - Adaptive Subdivision of Bezier Curves",
+	http://www.antigrain.com/research/adaptive_bezier/
+Maxim Shemanarev, "Anti-Grain Geometry - Texts Rasterization Exposures",
+	http://www.antigrain.com/research/font_rasterization/
+V. Gaultney, M. Hosken, A. Ward, "An Introduction to TrueType Fonts: A look inside the TTF format",
+	https://scripts.sil.org/iws-chapter08
+
+*/
+
+/*
+
 ---- GLOSSARY ----
 
 I am of firm belief that adequate imaginative nomenclature is the single
