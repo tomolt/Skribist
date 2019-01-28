@@ -45,6 +45,36 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #define xU32(v) xU32_((uint8_t *) &(v))
 
 typedef struct {
+	int32_t version;
+	int32_t fontRevision;
+	uint32_t checkSumAdjustment;
+	uint32_t magicNumber;
+	uint16_t flags;
+	uint16_t unitsPerEm;
+	int64_t created;
+	int64_t modified;
+	int16_t xMin;
+	int16_t yMin;
+	int16_t xMax;
+	int16_t yMax;
+	uint16_t macStyle;
+	uint16_t lowestRecPPEM;
+	int16_t fontDirectionHint;
+	int16_t indexToLocFormat;
+	int16_t glyphDataFormat;
+} headTbl;
+
+typedef struct {
+	int16_t numContours;
+	int16_t xMin;
+	int16_t yMin;
+	int16_t xMax;
+	int16_t yMax;
+} GlyphHdr;
+
+typedef uint8_t *glyfTbl;
+
+typedef struct {
 	char tag[4];
 	uint32_t checksum;
 	uint32_t offset;
@@ -58,7 +88,28 @@ typedef struct {
 	uint16_t entry_selector;
 	uint16_t range_shift;
 	TableInfo tables[];
-} OffsetTable;
+} offsetTbl;
+
+typedef struct {
+	unsigned long glyf;
+	unsigned long head;
+} OffsetCache;
+
+static OffsetCache cache_offsets(offsetTbl *offt)
+{
+	OffsetCache cache = { 0 };
+	int count = xU16(offt->num_tables);
+	int idx = 0, cmp;
+	do {
+		cmp = strncmp(offt->tables[idx].tag, "glyf", 4);
+		if (!cmp) cache.glyf = xU32(offt->tables[idx].offset);
+	} while (cmp < 0 && idx < count && ++idx);
+	do {
+		cmp = strncmp(offt->tables[idx].tag, "head", 4);
+		if (!cmp) cache.head = xU32(offt->tables[idx].offset);
+	} while (cmp < 0 && idx < count && ++idx);
+	return cache;
+}
 
 int main(int argc, char const *argv[])
 {
@@ -68,11 +119,9 @@ int main(int argc, char const *argv[])
 	unsigned char *mapped = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
 	close(descr);
 
-	OffsetTable *offt = (OffsetTable *) mapped;
-
-	for (int i = 0; i < xU16(offt->num_tables); ++i) {
-		printf("%.4s\n", offt->tables[i].tag);
-	}
+	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
+	printf("glyf: %lu\n", offcache.glyf);
+	printf("head: %lu\n", offcache.head);
 
 	munmap(mapped, stat.st_size);
 	return EXIT_SUCCESS;
