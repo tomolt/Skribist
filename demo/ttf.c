@@ -58,7 +58,7 @@ static int16_t ri16(BYTES2 raw)
 	return *(int16_t *) &u;
 }
 
-static uint32_t ru32(BYTES2 raw)
+static uint32_t ru32(BYTES4 raw)
 {
 	BYTES1 *bytes = (BYTES1 *) &raw;
 	uint32_t b0 = bytes[3], b1 = bytes[2];
@@ -158,27 +158,27 @@ static void print_glyph_flags(BYTES1 *glyf_ent)
 	while (cur_pt < num_pts) {
 		uint8_t flag = *(glyf_cursor++);
 		if (flag & SGF_ON_CURVE_POINT) {
-			printf("| on curve point");
+			printf("| on curve point ");
 		}
 		if (flag & SGF_X_SHORT_VECTOR) {
-			printf("| X short vector");
+			printf("| X short vector ");
 		}
 		if (flag & SGF_Y_SHORT_VECTOR) {
-			printf("| Y short vector");
+			printf("| Y short vector ");
 		}
 		if (flag & SGF_REPEAT_FLAG) {
 			int add_times = *(glyf_cursor++);
-			printf("| repeats %d times", add_times + 1);
+			printf("| repeats %d times ", add_times + 1);
 			cur_pt += add_times;
 		}
 		if (flag & SGF_X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR) {
-			printf("| foo1");
+			printf("| foo1 ");
 		}
 		if (flag & SGF_Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR) {
-			printf("| foo2");
+			printf("| foo2 ");
 		}
 		if (flag & SGF_OVERLAP_SIMPLE) {
-			printf("| simple overlap");
+			printf("| simple overlap ");
 		}
 		printf("\n");
 		++cur_pt;
@@ -196,13 +196,11 @@ int main(int argc, char const *argv[])
 	assert(mapped != MAP_FAILED);
 	close(descr);
 
-	printf("%u\n", ri16(0xAFBD));
-
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
 	printf("glyf: %lu\n", offcache.glyf);
 	printf("head: %lu\n", offcache.head);
 
-	// print_glyph_flags(mapped + offcache.glyf);
+	print_glyph_flags(mapped + offcache.glyf);
 
 	munmap(mapped, stat.st_size);
 	return EXIT_SUCCESS;
