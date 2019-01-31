@@ -33,61 +33,82 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#define xU16_(b) ((b)[0] << 8 | (b)[1])
-#define xU16(v) xU16_((uint8_t *) &(v))
-#define xU32_(b) ((b)[0] << 24 | (b)[1] << 16 | (b)[2] << 8 | (b)[3])
-#define xU32(v) xU32_((uint8_t *) &(v))
+typedef uint8_t  BYTES1;
+typedef uint16_t BYTES2;
+typedef uint32_t BYTES4;
+typedef uint64_t BYTES8;
+
+static uint16_t ru16(BYTES2 raw)
+{
+	BYTES1 *bytes = (BYTES1 *) &raw;
+	uint16_t b0 = bytes[1], b1 = bytes[0];
+	return b0 | b1 << 8;
+}
+
+static int16_t ri16(BYTES2 raw)
+{
+	uint16_t u = ru16(raw);
+	return *(int16_t *) &u;
+}
+
+static uint32_t ru32(BYTES2 raw)
+{
+	BYTES1 *bytes = (BYTES1 *) &raw;
+	uint32_t b0 = bytes[3], b1 = bytes[2];
+	uint32_t b2 = bytes[1], b3 = bytes[0];
+	return b0 | b1 << 8 | b2 << 16 | b3 << 24;
+}
 
 typedef struct {
-	int32_t version;
-	int32_t fontRevision;
-	uint32_t checkSumAdjustment;
-	uint32_t magicNumber;
-	uint16_t flags;
-	uint16_t unitsPerEm;
-	int64_t created;
-	int64_t modified;
-	int16_t xMin;
-	int16_t yMin;
-	int16_t xMax;
-	int16_t yMax;
-	uint16_t macStyle;
-	uint16_t lowestRecPPEM;
-	int16_t fontDirectionHint;
-	int16_t indexToLocFormat;
-	int16_t glyphDataFormat;
+	BYTES4 version;
+	BYTES4 fontRevision;
+	BYTES4 checkSumAdjustment;
+	BYTES4 magicNumber;
+	BYTES2 flags;
+	BYTES2 unitsPerEm;
+	BYTES8 created;
+	BYTES8 modified;
+	BYTES2 xMin;
+	BYTES2 yMin;
+	BYTES2 xMax;
+	BYTES2 yMax;
+	BYTES2 macStyle;
+	BYTES2 lowestRecPPEM;
+	BYTES2 fontDirectionHint;
+	BYTES2 indexToLocFormat;
+	BYTES2 glyphDataFormat;
 } headTbl;
 
-typedef struct {
-	int16_t numContours;
-	int16_t xMin;
-	int16_t yMin;
-	int16_t xMax;
-	int16_t yMax;
-} GlyphHdr;
-
-typedef uint8_t *glyfTbl;
+// Simple glyph flags
+#define SGF_ON_CURVE_POINT                       0x01
+#define SGF_X_SHORT_VECTOR                       0x02
+#define SGF_Y_SHORT_VECTOR                       0x04
+#define SGF_REPEAT_FLAG                          0x08
+#define SGF_X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR 0x10
+#define SGF_Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR 0x20
+#define SGF_OVERLAP_SIMPLE                       0x40
 
 typedef struct {
 	char tag[4];
-	uint32_t checksum;
-	uint32_t offset;
-	uint32_t length;
-} TableInfo;
+	BYTES4 checksum;
+	BYTES4 offset;
+	BYTES4 length;
+} offsetEnt;
 
 typedef struct {
-	uint32_t scaler_type;
-	uint16_t num_tables;
-	uint16_t search_range;
-	uint16_t entry_selector;
-	uint16_t range_shift;
-	TableInfo tables[];
+	BYTES4 scalerType;
+	BYTES2 numTables;
+	BYTES2 searchRange;
+	BYTES2 entrySelector;
+	BYTES2 rangeShift;
+	offsetEnt entries[];
 } offsetTbl;
 
 typedef struct {
@@ -98,30 +119,90 @@ typedef struct {
 static OffsetCache cache_offsets(offsetTbl *offt)
 {
 	OffsetCache cache = { 0 };
-	int count = xU16(offt->num_tables);
+	int count = ru16(offt->numTables);
 	int idx = 0, cmp;
 	do {
-		cmp = strncmp(offt->tables[idx].tag, "glyf", 4);
-		if (!cmp) cache.glyf = xU32(offt->tables[idx].offset);
+		cmp = strncmp(offt->entries[idx].tag, "glyf", 4);
+		if (!cmp) cache.glyf = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	do {
-		cmp = strncmp(offt->tables[idx].tag, "head", 4);
-		if (!cmp) cache.head = xU32(offt->tables[idx].offset);
+		cmp = strncmp(offt->entries[idx].tag, "head", 4);
+		if (!cmp) cache.head = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	return cache;
+}
+
+typedef struct {
+	BYTES2 numContours;
+	BYTES2 xMin;
+	BYTES2 yMin;
+	BYTES2 xMax;
+	BYTES2 yMax;
+} ShHdr;
+
+static void print_glyph_flags(BYTES1 *glyf_ent)
+{
+	BYTES1 *glyf_cursor = glyf_ent;
+
+	ShHdr *sh = (ShHdr *) glyf_cursor;
+	int num_pts = ri16(sh->numContours);
+	assert(num_pts >= 0);
+	glyf_cursor += 10;
+
+	glyf_cursor += 2 * num_pts;
+
+	int instr_len = ri16(*(BYTES2 *) glyf_cursor);
+	glyf_cursor += 2 + instr_len;
+
+	int cur_pt = 0;
+	while (cur_pt < num_pts) {
+		uint8_t flag = *(glyf_cursor++);
+		if (flag & SGF_ON_CURVE_POINT) {
+			printf("| on curve point");
+		}
+		if (flag & SGF_X_SHORT_VECTOR) {
+			printf("| X short vector");
+		}
+		if (flag & SGF_Y_SHORT_VECTOR) {
+			printf("| Y short vector");
+		}
+		if (flag & SGF_REPEAT_FLAG) {
+			int add_times = *(glyf_cursor++);
+			printf("| repeats %d times", add_times + 1);
+			cur_pt += add_times;
+		}
+		if (flag & SGF_X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR) {
+			printf("| foo1");
+		}
+		if (flag & SGF_Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR) {
+			printf("| foo2");
+		}
+		if (flag & SGF_OVERLAP_SIMPLE) {
+			printf("| simple overlap");
+		}
+		printf("\n");
+		++cur_pt;
+	}
 }
 
 int main(int argc, char const *argv[])
 {
 	int descr = open("Ubuntu-C.ttf", O_RDONLY);
+	assert(descr >= 0);
 	struct stat stat;
-	fstat(descr, &stat);
-	unsigned char *mapped = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
+	int fstat_ret = fstat(descr, &stat);
+	assert(fstat_ret == 0);
+	BYTES1 *mapped = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
+	assert(mapped != MAP_FAILED);
 	close(descr);
+
+	printf("%u\n", ri16(0xAFBD));
 
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
 	printf("glyf: %lu\n", offcache.glyf);
 	printf("head: %lu\n", offcache.head);
+
+	// print_glyph_flags(mapped + offcache.glyf);
 
 	munmap(mapped, stat.st_size);
 	return EXIT_SUCCESS;
