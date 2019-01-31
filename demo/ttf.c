@@ -87,13 +87,15 @@ typedef struct {
 } headTbl;
 
 // Simple glyph flags
-#define SGF_ON_CURVE_POINT                       0x01
-#define SGF_X_SHORT_VECTOR                       0x02
-#define SGF_Y_SHORT_VECTOR                       0x04
-#define SGF_REPEAT_FLAG                          0x08
-#define SGF_X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR 0x10
-#define SGF_Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR 0x20
-#define SGF_OVERLAP_SIMPLE                       0x40
+#define SGF_ON_CURVE_POINT 0x01
+#define SGF_X_SHORT_VECTOR 0x02
+#define SGF_Y_SHORT_VECTOR 0x04
+#define SGF_REPEAT_FLAG    0x08
+#define SGF_POSITIVE_X     0x10
+#define SGF_REUSE_PREV_X   0x10
+#define SGF_POSITIVE_Y     0x20
+#define SGF_REUSE_PREV_Y   0x20
+#define SGF_OVERLAP_SIMPLE 0x40
 
 typedef struct {
 	char tag[4];
@@ -140,48 +142,67 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
-static void print_glyph_flags(BYTES1 *glyf_ent)
+static void print_glyph_flags(BYTES1 *glyfEntry)
 {
-	BYTES1 *glyf_cursor = glyf_ent;
+	BYTES1 *glyfCursor = glyfEntry;
 
-	ShHdr *sh = (ShHdr *) glyf_cursor;
-	int num_pts = ri16(sh->numContours);
-	assert(num_pts >= 0);
-	glyf_cursor += 10;
+	ShHdr *sh = (ShHdr *) glyfCursor;
+	int numContours = ri16(sh->numContours);
+	assert(numContours >= 0);
+	printf("numContours: %d\n", numContours);
+	printf("xMin: %d\n", ri16(sh->xMin));
+	printf("yMin: %d\n", ri16(sh->yMin));
+	printf("xMax: %d\n", ri16(sh->xMax));
+	printf("yMax: %d\n", ri16(sh->yMax));
+	glyfCursor += 10;
 
-	glyf_cursor += 2 * num_pts;
+	BYTES2 *endPts = (BYTES2 *) glyfCursor;
+	int numPts = numContours == 0 ? 0 : ru16(endPts[numContours - 1]);
+	glyfCursor += 2 * numContours;
 
-	int instr_len = ri16(*(BYTES2 *) glyf_cursor);
-	glyf_cursor += 2 + instr_len;
+	int instrLength = ri16(*(BYTES2 *) glyfCursor);
+	glyfCursor += 2 + instrLength;
 
-	int cur_pt = 0;
-	while (cur_pt < num_pts) {
-		uint8_t flag = *(glyf_cursor++);
+	int curPt = 0;
+	while (curPt < numPts) {
+		uint8_t flag = *(glyfCursor++);
 		if (flag & SGF_ON_CURVE_POINT) {
 			printf("| on curve point ");
 		}
 		if (flag & SGF_X_SHORT_VECTOR) {
 			printf("| X short vector ");
+			if (flag & SGF_POSITIVE_X) {
+				printf("| +X ");
+			} else {
+				printf("| -X ");
+			}
+		} else {
+			if (flag & SGF_REUSE_PREV_X) {
+				printf("| re-use previous X ");
+			}
 		}
 		if (flag & SGF_Y_SHORT_VECTOR) {
 			printf("| Y short vector ");
+			if (flag & SGF_POSITIVE_Y) {
+				printf("| +Y ");
+			} else {
+				printf("| -Y ");
+			}
+		} else {
+			if (flag & SGF_REUSE_PREV_Y) {
+				printf("| re-use previous Y ");
+			}
 		}
 		if (flag & SGF_REPEAT_FLAG) {
-			int add_times = *(glyf_cursor++);
-			printf("| repeats %d times ", add_times + 1);
-			cur_pt += add_times;
-		}
-		if (flag & SGF_X_IS_SAME_OR_POSITIVE_X_SHORT_VECTOR) {
-			printf("| foo1 ");
-		}
-		if (flag & SGF_Y_IS_SAME_OR_POSITIVE_Y_SHORT_VECTOR) {
-			printf("| foo2 ");
+			int addTimes = *(glyfCursor++);
+			printf("| repeats %d times ", addTimes + 1);
+			curPt += addTimes;
 		}
 		if (flag & SGF_OVERLAP_SIMPLE) {
 			printf("| simple overlap ");
 		}
 		printf("\n");
-		++cur_pt;
+		++curPt;
 	}
 }
 
