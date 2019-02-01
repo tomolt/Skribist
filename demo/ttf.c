@@ -162,7 +162,7 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 	glyfCursor += 10;
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
-	int numPts = numContours == 0 ? 0 : ru16(endPts[numContours - 1]);
+	int numPts = numContours == 0 ? 0 : (ru16(endPts[numContours - 1]) + 1);
 	info.endPts = endPts;
 	glyfCursor += 2 * numContours;
 
