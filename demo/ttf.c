@@ -150,7 +150,7 @@ typedef struct {
 	BYTES1 *yPtr;
 } OutlineInfo;
 
-static OutlineInfo print_glyph_flags(BYTES1 *glyfEntry)
+static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	OutlineInfo info = { 0 };
@@ -159,11 +159,6 @@ static OutlineInfo print_glyph_flags(BYTES1 *glyfEntry)
 	int numContours = ri16(sh->numContours);
 	assert(numContours >= 0);
 	info.numContours = numContours;
-	printf("numContours: %d\n", numContours);
-	printf("xMin: %d\n", ri16(sh->xMin));
-	printf("yMin: %d\n", ri16(sh->yMin));
-	printf("xMax: %d\n", ri16(sh->xMax));
-	printf("yMax: %d\n", ri16(sh->yMax));
 	glyfCursor += 10;
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
@@ -181,45 +176,12 @@ static OutlineInfo print_glyph_flags(BYTES1 *glyfEntry)
 	int curPt = 0;
 	while (curPt < numPts) {
 		uint8_t flag = *(glyfCursor++);
-		if (flag & SGF_ON_CURVE_POINT) {
-			printf("| on curve point ");
-		}
-		if (flag & SGF_SHORT_X_COORD) {
-			printf("| X short vector ");
+		if (flag & SGF_SHORT_X_COORD)
 			xBytes += 1;
-			if (flag & SGF_POSITIVE_X) {
-				printf("| +X ");
-			} else {
-				printf("| -X ");
-			}
-		} else {
-			if (flag & SGF_REUSE_PREV_X) {
-				printf("| re-use previous X ");
-			} else {
-				xBytes += 2;
-			}
-		}
-		if (flag & SGF_SHORT_Y_COORD) {
-			printf("| Y short vector ");
-			if (flag & SGF_POSITIVE_Y) {
-				printf("| +Y ");
-			} else {
-				printf("| -Y ");
-			}
-		} else {
-			if (flag & SGF_REUSE_PREV_Y) {
-				printf("| re-use previous Y ");
-			}
-		}
-		if (flag & SGF_REPEAT_FLAG) {
-			int addTimes = *(glyfCursor++);
-			printf("| repeats %d times ", addTimes + 1);
-			curPt += addTimes;
-		}
-		if (flag & SGF_OVERLAP_SIMPLE) {
-			printf("| simple overlap ");
-		}
-		printf("\n");
+		else if (!(flag & SGF_REUSE_PREV_X))
+			xBytes += 2;
+		if (flag & SGF_REPEAT_FLAG)
+			curPt += *(glyfCursor++);
 		++curPt;
 	}
 
@@ -275,7 +237,7 @@ static void raster_outline(OutlineInfo info)
 
 int main(int argc, char const *argv[])
 {
-	int descr = open("DejaVuSans.ttf", O_RDONLY);
+	int descr = open("Ubuntu-C.ttf", O_RDONLY);
 	assert(descr >= 0);
 	struct stat stat;
 	int fstat_ret = fstat(descr, &stat);
@@ -285,10 +247,8 @@ int main(int argc, char const *argv[])
 	close(descr);
 
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
-	printf("glyf: %lu\n", offcache.glyf);
-	printf("head: %lu\n", offcache.head);
 
-	OutlineInfo info = print_glyph_flags(mapped + offcache.glyf);
+	OutlineInfo info = gather_outline_info(mapped + offcache.glyf);
 	raster_outline(info);
 
 	munmap(mapped, stat.st_size);
