@@ -88,8 +88,8 @@ typedef struct {
 
 // Simple glyph flags
 #define SGF_ON_CURVE_POINT 0x01
-#define SGF_X_SHORT_VECTOR 0x02
-#define SGF_Y_SHORT_VECTOR 0x04
+#define SGF_SHORT_X_COORD  0x02
+#define SGF_SHORT_Y_COORD  0x04
 #define SGF_REPEAT_FLAG    0x08
 #define SGF_POSITIVE_X     0x10
 #define SGF_REUSE_PREV_X   0x10
@@ -142,13 +142,23 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
-static void print_glyph_flags(BYTES1 *glyfEntry)
+typedef struct {
+	int numContours;
+	BYTES2 *endPts;
+	BYTES1 *flagsPtr;
+	BYTES1 *xPtr;
+	BYTES1 *yPtr;
+} OutlineInfo;
+
+static OutlineInfo print_glyph_flags(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
+	OutlineInfo info = { 0 };
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
 	int numContours = ri16(sh->numContours);
 	assert(numContours >= 0);
+	info.numContours = numContours;
 	printf("numContours: %d\n", numContours);
 	printf("xMin: %d\n", ri16(sh->xMin));
 	printf("yMin: %d\n", ri16(sh->yMin));
@@ -158,10 +168,15 @@ static void print_glyph_flags(BYTES1 *glyfEntry)
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
 	int numPts = numContours == 0 ? 0 : ru16(endPts[numContours - 1]);
+	info.endPts = endPts;
 	glyfCursor += 2 * numContours;
 
 	int instrLength = ri16(*(BYTES2 *) glyfCursor);
 	glyfCursor += 2 + instrLength;
+
+	info.flagsPtr = glyfCursor;
+
+	unsigned long xBytes = 0;
 
 	int curPt = 0;
 	while (curPt < numPts) {
@@ -169,8 +184,9 @@ static void print_glyph_flags(BYTES1 *glyfEntry)
 		if (flag & SGF_ON_CURVE_POINT) {
 			printf("| on curve point ");
 		}
-		if (flag & SGF_X_SHORT_VECTOR) {
+		if (flag & SGF_SHORT_X_COORD) {
 			printf("| X short vector ");
+			xBytes += 1;
 			if (flag & SGF_POSITIVE_X) {
 				printf("| +X ");
 			} else {
@@ -179,9 +195,11 @@ static void print_glyph_flags(BYTES1 *glyfEntry)
 		} else {
 			if (flag & SGF_REUSE_PREV_X) {
 				printf("| re-use previous X ");
+			} else {
+				xBytes += 2;
 			}
 		}
-		if (flag & SGF_Y_SHORT_VECTOR) {
+		if (flag & SGF_SHORT_Y_COORD) {
 			printf("| Y short vector ");
 			if (flag & SGF_POSITIVE_Y) {
 				printf("| +Y ");
@@ -204,11 +222,60 @@ static void print_glyph_flags(BYTES1 *glyfEntry)
 		printf("\n");
 		++curPt;
 	}
+
+	info.xPtr = glyfCursor;
+	info.yPtr = glyfCursor + xBytes;
+
+	return info;
+}
+
+static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
+{
+	long co = prev;
+	if (flags & SGF_SHORT_X_COORD) {
+		if (flags & SGF_POSITIVE_X) {
+			co += **ptr;
+			(*ptr) += 1;
+		} else {
+			co -= **ptr;
+			(*ptr) += 1;
+		}
+	} else if (!(flags & SGF_REUSE_PREV_X)) {
+		co += ri16(*(BYTES2 *) *ptr);
+		(*ptr) += 2;
+	}
+	return co;
+}
+
+static void raster_outline(OutlineInfo info)
+{
+	int pointIdx = 0;
+
+	for (int c = 0; c < info.numContours; ++c) {
+		long prev_x = 0, prev_y = 0;
+
+		int endPt = ru16(info.endPts[c]);
+		while (pointIdx <= endPt) {
+			BYTES1 flags = *(info.flagsPtr++);
+
+			int times = 1;
+			if (flags & SGF_REPEAT_FLAG)
+				times += *(info.flagsPtr++);
+
+			for (int t = 0; t < times; ++t) { // TODO reverse & don't check on first iteration
+				long x = pull_coordinate(flags, &info.xPtr, prev_x);
+				long y = pull_coordinate(flags >> 1, &info.yPtr, prev_y);
+				printf("(%ld, %ld)\n", x, y);
+				prev_x = x, prev_y = y;
+				++pointIdx;
+			}
+		}
+	}
 }
 
 int main(int argc, char const *argv[])
 {
-	int descr = open("Ubuntu-C.ttf", O_RDONLY);
+	int descr = open("DejaVuSans.ttf", O_RDONLY);
 	assert(descr >= 0);
 	struct stat stat;
 	int fstat_ret = fstat(descr, &stat);
@@ -221,7 +288,8 @@ int main(int argc, char const *argv[])
 	printf("glyf: %lu\n", offcache.glyf);
 	printf("head: %lu\n", offcache.head);
 
-	print_glyph_flags(mapped + offcache.glyf);
+	OutlineInfo info = print_glyph_flags(mapped + offcache.glyf);
+	raster_outline(info);
 
 	munmap(mapped, stat.st_size);
 	return EXIT_SUCCESS;
