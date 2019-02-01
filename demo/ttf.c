@@ -214,6 +214,8 @@ static void raster_outline(OutlineInfo info)
 	int pointIdx = 0;
 
 	for (int c = 0; c < info.numContours; ++c) {
+		printf("~~ Contour #%d ~~\n", c);
+
 		long prev_x = 0, prev_y = 0;
 
 		int endPt = ru16(info.endPts[c]);
@@ -235,6 +237,13 @@ static void raster_outline(OutlineInfo info)
 	}
 }
 
+static void print_head(BYTES1 *ptr)
+{
+	headTbl *head = (headTbl *) ptr;
+	int unitsPerEm = ru16(head->unitsPerEm);
+	printf("unitsPerEm: %d\n", unitsPerEm);
+}
+
 int main(int argc, char const *argv[])
 {
 	int descr = open("Ubuntu-C.ttf", O_RDONLY);
@@ -247,6 +256,8 @@ int main(int argc, char const *argv[])
 	close(descr);
 
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
+
+	print_head(mapped + offcache.head);
 
 	OutlineInfo info = gather_outline_info(mapped + offcache.glyf);
 	raster_outline(info);
