@@ -37,7 +37,50 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 
 #if defined(_WIN32)
 
+#define WIN32_LEAN_AND_MEAN 1
+#include <windows.h>
 
+typedef struct {
+	void *addr;
+	
+	HANDLE mapping;
+} MappedFile;
+
+static int unmap_file(MappedFile *str)
+{
+	BOOL ret = TRUE;
+	if (str->addr != NULL)
+		ret &= UnmapViewOfFile(str->addr);
+	if (str->mapping != INVALID_HANDLE_VALUE)
+		ret &= CloseHandle(str->mapping);
+	return ret ? 0 : -1;
+}
+
+static int map_file(char const *filename, MappedFile *str)
+{
+	*str = (MappedFile) { NULL, 0, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+	
+	HANDLE descr = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	if (descr == INVALID_HANDLE_VALUE) goto fail;
+	
+	DWORD high, low = GetFileSize(descr, &high);
+	if (low == INVALID_FILE_SIZE) goto fail;
+	
+	str->mapping = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
+	if (str->mapping == NULL) goto fail;
+	
+	str->addr = MapViewOfFile(str->mapping, FILE_MAP_READ, 0, 0, 0);
+	if (str->addr == NULL) goto fail;
+	
+	BOOL close_ret = CloseHandle(descr);
+	if (!close_ret) goto fail;
+	
+	return 0;
+	
+fail:
+	unmap_file(str);
+	return -1;
+}
 
 #elif defined(__posix__)
 
@@ -46,23 +89,33 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #include <fcntl.h>
 #include <sys/mman.h>
 
+typedef struct {
+	
+} MappedFile;
+
 static int map_file(char const *filename, void **addr, size_t *length)
 {
 	int descr = open(filename, O_RDONLY);
 	if (descr < 0) return -1;
+	
 	struct stat stat;
 	int fstat_ret = fstat(descr, &stat);
 	if (fstat_ret != 0) return close(descr), -1;
 	*length = stat.st_size;
+	
 	*addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, descr, 0);
-	close(descr);
 	if (*addr == MAP_FAILED) return -1;
+	
 	return 0;
+	
+	close(descr); // maybe error checking?
+	
+	return ret;
 }
 
 static void unmap_file(void *addr, size_t length)
 {
-	munmap(addr, length);
+	munmap(addr, length); // TODO error checking
 }
 
 #else
@@ -275,10 +328,10 @@ static void print_head(BYTES1 *ptr)
 
 int main(int argc, char const *argv[])
 {
-	BYTES1 *mapped;
-	size_t mapped_length;
-	int ret = map_file("Ubuntu-C.ttf", &mapped, &mapped_length);
+	MappedFile mappedFile;
+	int ret = map_file("Ubuntu-C.ttf", &mappedFile);
 	assert(ret == 0);
+	BYTES1 *mapped = mappedFile.addr;
 	
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
 
@@ -287,6 +340,6 @@ int main(int argc, char const *argv[])
 	OutlineInfo info = gather_outline_info(mapped + offcache.glyf);
 	raster_outline(info);
 
-	unmap_file(mapped, mapped_length);
+	unmap_file(&mappedFile);
 	return EXIT_SUCCESS;
 }
