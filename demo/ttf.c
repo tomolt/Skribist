@@ -78,6 +78,7 @@ static int map_file(char const *filename, MappedFile *str)
 	return 0;
 	
 fail:
+	// TODO close descr!
 	unmap_file(str);
 	return -1;
 }
@@ -90,10 +91,12 @@ fail:
 #include <sys/mman.h>
 
 typedef struct {
+	void *addr;
 	
+	off_t length;
 } MappedFile;
 
-static int map_file(char const *filename, void **addr, size_t *length)
+static int map_file(char const *filename, MappedFile *str)
 {
 	int descr = open(filename, O_RDONLY);
 	if (descr < 0) return -1;
@@ -101,10 +104,10 @@ static int map_file(char const *filename, void **addr, size_t *length)
 	struct stat stat;
 	int fstat_ret = fstat(descr, &stat);
 	if (fstat_ret != 0) return close(descr), -1;
-	*length = stat.st_size;
+	str->length = stat.st_size;
 	
-	*addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, descr, 0);
-	if (*addr == MAP_FAILED) return -1;
+	str->addr = mmap(NULL, str->length, PROT_READ, MAP_PRIVATE, descr, 0);
+	if (str->addr == MAP_FAILED) return -1;
 	
 	return 0;
 	
@@ -113,9 +116,9 @@ static int map_file(char const *filename, void **addr, size_t *length)
 	return ret;
 }
 
-static void unmap_file(void *addr, size_t length)
+static void unmap_file(MappedFile *str)
 {
-	munmap(addr, length); // TODO error checking
+	munmap(str->addr, str->length); // TODO error checking
 }
 
 #else
