@@ -35,10 +35,39 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #include <stdint.h>
 #include <assert.h>
 
+#if defined(_WIN32)
+
+
+
+#elif defined(__posix__)
+
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+
+static int map_file(char const *filename, void **addr, size_t *length)
+{
+	int descr = open(filename, O_RDONLY);
+	if (descr < 0) return -1;
+	struct stat stat;
+	int fstat_ret = fstat(descr, &stat);
+	if (fstat_ret != 0) return close(descr), -1;
+	*length = stat.st_size;
+	*addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, descr, 0);
+	close(descr);
+	if (*addr == MAP_FAILED) return -1;
+	return 0;
+}
+
+static void unmap_file(void *addr, size_t length)
+{
+	munmap(addr, length);
+}
+
+#else
+#error Platform not supported.
+#endif
 
 typedef uint8_t  BYTES1;
 typedef uint16_t BYTES2;
@@ -246,15 +275,11 @@ static void print_head(BYTES1 *ptr)
 
 int main(int argc, char const *argv[])
 {
-	int descr = open("Ubuntu-C.ttf", O_RDONLY);
-	assert(descr >= 0);
-	struct stat stat;
-	int fstat_ret = fstat(descr, &stat);
-	assert(fstat_ret == 0);
-	BYTES1 *mapped = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
-	assert(mapped != MAP_FAILED);
-	close(descr);
-
+	BYTES1 *mapped;
+	size_t mapped_length;
+	int ret = map_file("Ubuntu-C.ttf", &mapped, &mapped_length);
+	assert(ret == 0);
+	
 	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
 
 	print_head(mapped + offcache.head);
@@ -262,6 +287,6 @@ int main(int argc, char const *argv[])
 	OutlineInfo info = gather_outline_info(mapped + offcache.glyf);
 	raster_outline(info);
 
-	munmap(mapped, stat.st_size);
+	unmap_file(mapped, mapped_length);
 	return EXIT_SUCCESS;
 }
