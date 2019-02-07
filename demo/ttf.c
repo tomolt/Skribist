@@ -46,6 +46,8 @@ typedef struct {
 	HANDLE mapping;
 } MappedFile;
 
+typedef HANDLE FileMapHandle;
+
 static int unmap_file(MappedFile *str)
 {
 	BOOL ret = TRUE;
@@ -58,7 +60,7 @@ static int unmap_file(MappedFile *str)
 
 static int map_file(char const *filename, MappedFile *str)
 {
-	*str = (MappedFile) { NULL, 0, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE };
+	*str = (MappedFile) { NULL, INVALID_HANDLE_VALUE };
 	
 	HANDLE descr = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (descr == INVALID_HANDLE_VALUE) goto fail;
@@ -83,7 +85,7 @@ fail:
 	return -1;
 }
 
-#elif defined(__posix__)
+#elif defined(__unix__)
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -96,29 +98,37 @@ typedef struct {
 	off_t length;
 } MappedFile;
 
-static int map_file(char const *filename, MappedFile *str)
-{
-	int descr = open(filename, O_RDONLY);
-	if (descr < 0) return -1;
-	
-	struct stat stat;
-	int fstat_ret = fstat(descr, &stat);
-	if (fstat_ret != 0) return close(descr), -1;
-	str->length = stat.st_size;
-	
-	str->addr = mmap(NULL, str->length, PROT_READ, MAP_PRIVATE, descr, 0);
-	if (str->addr == MAP_FAILED) return -1;
-	
-	return 0;
-	
-	close(descr); // maybe error checking?
-	
-	return ret;
-}
+typedef off_t FileMapHandle;
 
 static void unmap_file(MappedFile *str)
 {
-	munmap(str->addr, str->length); // TODO error checking
+	if (str->addr != MAP_FAILED)
+		munmap(str->addr, str->length); // TODO error checking
+}
+
+static int map_file(char const *filename, MappedFile *str)
+{
+	*str = (MappedFile) { MAP_FAILED, 0 };
+
+	int descr = open(filename, O_RDONLY);
+	if (descr < 0) goto fail;
+	
+	struct stat stat;
+	int fstat_ret = fstat(descr, &stat);
+	if (fstat_ret != 0) goto fail;
+	str->length = stat.st_size;
+	
+	str->addr = mmap(NULL, str->length, PROT_READ, MAP_PRIVATE, descr, 0);
+	if (str->addr == MAP_FAILED) goto fail;
+	
+	close(descr); // maybe error checking?
+	return 0;
+	
+fail:
+	unmap_file(str);
+	if (!(descr < 0))
+		close(descr); // maybe error checking?
+	return -1;
 }
 
 #else
