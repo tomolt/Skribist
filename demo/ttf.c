@@ -40,27 +40,22 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 
-typedef struct {
-	void *addr;
-	
-	HANDLE mapping;
-} MappedFile;
-
 typedef HANDLE FileMapHandle;
 
-static int unmap_file(MappedFile *str)
+static int unmap_file(void *addr, FileMapHandle mapping)
 {
 	BOOL ret = TRUE;
-	if (str->addr != NULL)
-		ret &= UnmapViewOfFile(str->addr);
-	if (str->mapping != INVALID_HANDLE_VALUE)
-		ret &= CloseHandle(str->mapping);
+	if (addr != NULL)
+		ret &= UnmapViewOfFile(addr);
+	if (mapping != INVALID_HANDLE_VALUE)
+		ret &= CloseHandle(mapping);
 	return ret ? 0 : -1;
 }
 
-static int map_file(char const *filename, MappedFile *str)
+static int map_file(char const *filename, void **addr, FileMapHandle *mapping)
 {
-	*str = (MappedFile) { NULL, INVALID_HANDLE_VALUE };
+	*addr = NULL;
+	*mapping = INVALID_HANDLE_VALUE;
 	
 	HANDLE descr = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (descr == INVALID_HANDLE_VALUE) goto fail;
@@ -68,11 +63,11 @@ static int map_file(char const *filename, MappedFile *str)
 	DWORD high, low = GetFileSize(descr, &high);
 	if (low == INVALID_FILE_SIZE) goto fail;
 	
-	str->mapping = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
-	if (str->mapping == NULL) goto fail;
+	*mapping = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
+	if (*mapping == NULL) goto fail;
 	
-	str->addr = MapViewOfFile(str->mapping, FILE_MAP_READ, 0, 0, 0);
-	if (str->addr == NULL) goto fail;
+	*addr = MapViewOfFile(*mapping, FILE_MAP_READ, 0, 0, 0);
+	if (*addr == NULL) goto fail;
 	
 	BOOL close_ret = CloseHandle(descr);
 	if (!close_ret) goto fail;
@@ -80,8 +75,11 @@ static int map_file(char const *filename, MappedFile *str)
 	return 0;
 	
 fail:
-	// TODO close descr!
+	// don't care about further return values - we're already failing.
+	if (descr != INVALID_HANDLE_VALUE)
+		CloseHandle(descr);
 	unmap_file(str);
+
 	return -1;
 }
 
@@ -92,42 +90,41 @@ fail:
 #include <fcntl.h>
 #include <sys/mman.h>
 
-typedef struct {
-	void *addr;
-	
-	off_t length;
-} MappedFile;
-
 typedef off_t FileMapHandle;
 
-static void unmap_file(MappedFile *str)
+static int unmap_file(void *addr, FileMapHandle mapping)
 {
-	if (str->addr != MAP_FAILED)
-		munmap(str->addr, str->length); // TODO error checking
+	return addr == MAP_FAILED ? -1 : munmap(addr, mapping);
 }
 
-static int map_file(char const *filename, MappedFile *str)
+static int map_file(char const *filename, void **addr, FileMapHandle *mapping)
 {
-	*str = (MappedFile) { MAP_FAILED, 0 };
+	int ret;
+
+	*addr = MAP_FAILED;
 
 	int descr = open(filename, O_RDONLY);
 	if (descr < 0) goto fail;
 	
 	struct stat stat;
-	int fstat_ret = fstat(descr, &stat);
-	if (fstat_ret != 0) goto fail;
-	str->length = stat.st_size;
+	ret = fstat(descr, &stat);
+	if (ret != 0) goto fail;
+	*mapping = stat.st_size;
 	
-	str->addr = mmap(NULL, str->length, PROT_READ, MAP_PRIVATE, descr, 0);
-	if (str->addr == MAP_FAILED) goto fail;
+	*addr = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
+	if (*addr == MAP_FAILED) goto fail;
 	
-	close(descr); // maybe error checking?
+	ret = close(descr);
+	if (ret != 0) goto fail;
+
 	return 0;
 	
 fail:
-	unmap_file(str);
-	if (!(descr < 0))
-		close(descr); // maybe error checking?
+	// don't care about further return values - we're already failing.
+	if (descr >= 0)
+		close(descr);
+	unmap_file(*addr, *mapping);
+
 	return -1;
 }
 
@@ -341,18 +338,21 @@ static void print_head(BYTES1 *ptr)
 
 int main(int argc, char const *argv[])
 {
-	MappedFile mappedFile;
-	int ret = map_file("Ubuntu-C.ttf", &mappedFile);
+	int ret;
+
+	BYTES1 *rawData;
+	FileMapHandle mapping;
+	ret = map_file("Ubuntu-C.ttf", (void **) &rawData, &mapping);
 	assert(ret == 0);
-	BYTES1 *mapped = mappedFile.addr;
 	
-	OffsetCache offcache = cache_offsets((offsetTbl *) mapped);
+	OffsetCache offcache = cache_offsets((offsetTbl *) rawData);
 
-	print_head(mapped + offcache.head);
+	print_head(rawData + offcache.head);
 
-	OutlineInfo info = gather_outline_info(mapped + offcache.glyf);
+	OutlineInfo info = gather_outline_info(rawData + offcache.glyf);
 	raster_outline(info);
 
-	unmap_file(&mappedFile);
+	ret = unmap_file((void *) rawData, mapping);
+	assert(ret == 0);
 	return EXIT_SUCCESS;
 }
