@@ -1,0 +1,7 @@
+CC := clang
+CFLAGS += -pedantic -Wall -Wextra -Isrc -Idemo
+LDFLAGS += -lm
+
+: foreach src/*.c demo/*.c |> $(CC) -c -g $(CFLAGS) %f -o %o |> build/%f.o
+: build/demo/demo.c.o |> $(CC) $(LDFLAGS) %f -o %o |> demo/demo
+: build/demo/ttf.c.o build/src/mapping.c.o |> $(CC) $(LDFLAGS) %f -o %o |> demo/ttf
