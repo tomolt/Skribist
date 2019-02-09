@@ -29,39 +29,15 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 
 */
 
+#include <stdint.h>
+
 #include "mapping.h"
+#include "header.h"
+#include "reading.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
 #include <assert.h>
-
-typedef uint8_t  BYTES1;
-typedef uint16_t BYTES2;
-typedef uint32_t BYTES4;
-typedef uint64_t BYTES8;
-
-static uint16_t ru16(BYTES2 raw)
-{
-	BYTES1 *bytes = (BYTES1 *) &raw;
-	uint16_t b0 = bytes[1], b1 = bytes[0];
-	return b0 | b1 << 8;
-}
-
-static int16_t ri16(BYTES2 raw)
-{
-	uint16_t u = ru16(raw);
-	return *(int16_t *) &u;
-}
-
-static uint32_t ru32(BYTES4 raw)
-{
-	BYTES1 *bytes = (BYTES1 *) &raw;
-	uint32_t b0 = bytes[3], b1 = bytes[2];
-	uint32_t b2 = bytes[1], b3 = bytes[0];
-	return b0 | b1 << 8 | b2 << 16 | b3 << 24;
-}
 
 typedef struct {
 	BYTES4 version;
@@ -93,43 +69,6 @@ typedef struct {
 #define SGF_POSITIVE_Y     0x20
 #define SGF_REUSE_PREV_Y   0x20
 #define SGF_OVERLAP_SIMPLE 0x40
-
-typedef struct {
-	char tag[4];
-	BYTES4 checksum;
-	BYTES4 offset;
-	BYTES4 length;
-} offsetEnt;
-
-typedef struct {
-	BYTES4 scalerType;
-	BYTES2 numTables;
-	BYTES2 searchRange;
-	BYTES2 entrySelector;
-	BYTES2 rangeShift;
-	offsetEnt entries[];
-} offsetTbl;
-
-typedef struct {
-	unsigned long glyf;
-	unsigned long head;
-} OffsetCache;
-
-static OffsetCache cache_offsets(offsetTbl *offt)
-{
-	OffsetCache cache = { 0 };
-	int count = ru16(offt->numTables);
-	int idx = 0, cmp;
-	do {
-		cmp = strncmp(offt->entries[idx].tag, "glyf", 4);
-		if (!cmp) cache.glyf = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
-	do {
-		cmp = strncmp(offt->entries[idx].tag, "head", 4);
-		if (!cmp) cache.head = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
-	return cache;
-}
 
 typedef struct {
 	BYTES2 numContours;
@@ -243,6 +182,8 @@ static void print_head(BYTES1 *ptr)
 
 int main(int argc, char const *argv[])
 {
+	(void) argc, (void) argv;
+
 	int ret;
 
 	BYTES1 *rawData;
@@ -250,7 +191,7 @@ int main(int argc, char const *argv[])
 	ret = olt_INTERN_map_file("Ubuntu-C.ttf", (void **) &rawData, &mapping);
 	assert(ret == 0);
 
-	OffsetCache offcache = cache_offsets((offsetTbl *) rawData);
+	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
 
 	print_head(rawData + offcache.head);
 
