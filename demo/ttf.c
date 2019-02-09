@@ -171,9 +171,9 @@ static void print_bezier(Node start, Node pivot, Node end)
 		start.x, start.y, pivot.x, pivot.y, end.x, end.y);
 }
 
-static int nodeState;
-static Node queuedStart;
-static Node queuedPivot;
+static int olt_GLOBAL_nodeState;
+static Node olt_GLOBAL_queuedStart;
+static Node olt_GLOBAL_queuedPivot;
 
 static Node interp_nodes(Node a, Node b)
 {
@@ -182,33 +182,33 @@ static Node interp_nodes(Node a, Node b)
 
 static void raster_node(Node newNode, int onCurve)
 {
-	switch (nodeState) {
+	switch (olt_GLOBAL_nodeState) {
 	case 0:
 		assert(onCurve);
-		queuedStart = newNode;
-		nodeState = 1;
+		olt_GLOBAL_queuedStart = newNode;
+		olt_GLOBAL_nodeState = 1;
 		break;
 	case 1:
 		if (onCurve) {
-			print_line(queuedStart, newNode);
-			queuedStart = newNode;
+			print_line(olt_GLOBAL_queuedStart, newNode);
+			olt_GLOBAL_queuedStart = newNode;
 			break;
 		} else {
-			queuedPivot = newNode;
-			nodeState = 2;
+			olt_GLOBAL_queuedPivot = newNode;
+			olt_GLOBAL_nodeState = 2;
 			break;
 		}
 	case 2:
 		if (onCurve) {
-			print_bezier(queuedStart, queuedPivot, newNode);
-			queuedStart = newNode;
-			nodeState = 1;
+			print_bezier(olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode);
+			olt_GLOBAL_queuedStart = newNode;
+			olt_GLOBAL_nodeState = 1;
 			break;
 		} else {
-			Node implicit = interp_nodes(queuedPivot, newNode);
-			print_bezier(queuedStart, queuedPivot, implicit);
-			queuedStart = implicit;
-			queuedPivot = newNode;
+			Node implicit = interp_nodes(olt_GLOBAL_queuedPivot, newNode);
+			print_bezier(olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit);
+			olt_GLOBAL_queuedStart = implicit;
+			olt_GLOBAL_queuedPivot = newNode;
 			break;
 		}
 	default: assert(0);

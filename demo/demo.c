@@ -133,8 +133,8 @@ typedef struct {
 	point_t end;
 } bezier_t;
 
-static int16_t accum[WIDTH * HEIGHT]; // This needs a better name
-static uint8_t image[WIDTH * HEIGHT];
+static int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
+static uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 static point_t cns_point(double x, double y)
 {
@@ -164,8 +164,8 @@ static void raster_dot(dot_t dot)
 	int total = winding * cover;
 	int width = 510 + abs(dot.ex - dot.bx) - 2 * max(dot.bx, dot.ex); // in the range 0 - 510
 	int value = total * width / 510;
-	accum[WIDTH * dot.py + dot.px] += value;
-	accum[WIDTH * dot.py + dot.px + 1] += total - value;
+	olt_GLOBAL_raster[WIDTH * dot.py + dot.px] += value;
+	olt_GLOBAL_raster[WIDTH * dot.py + dot.px + 1] += total - value;
 }
 
 /*
@@ -316,8 +316,8 @@ static void gather(void)
 {
 	int32_t acc = 0;
 	for (int i = 0; i < WIDTH * HEIGHT; ++i) {
-		acc += accum[i];
-		image[i] = min(abs(acc), 255);
+		acc += olt_GLOBAL_raster[i];
+		olt_GLOBAL_image[i] = min(abs(acc), 255);
 	}
 }
 
@@ -346,7 +346,7 @@ static void write_bmp(void)
 	fwrite(hdr, 1, 54, stdout);
 	for (int y = 0; y < HEIGHT; ++y) {
 		for (int x = 0; x < WIDTH; ++x) {
-			unsigned char c = image[WIDTH * y + x];
+			unsigned char c = olt_GLOBAL_image[WIDTH * y + x];
 			fputc(c, stdout); // r
 			fputc(c, stdout); // g
 			fputc(c, stdout); // b
