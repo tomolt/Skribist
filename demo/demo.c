@@ -236,30 +236,27 @@ static void raster_line(line_t line)
 
 /*
 
-All of these bezier helper functions are currently implemented pretty generically.
-But seeing how we for example only use hard-coded t = 0.5 this is redundant.
-Also, once the points of bezier curves are represented in relative coordinates
+Once the points of bezier curves are represented in relative coordinates
 to each other, interp_points() and manhattan_distance() should just operate
 on lines for simplicity.
 
 */
 
-static point_t interp_bezier(bezier_t bezier, double t)
+static point_t interp_bezier(bezier_t bezier)
 {
 	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
 	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
 	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
 	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
-	double x = ax * t * t + bx * t + bezier.beg.x;
-	double y = ay * t * t + by * t + bezier.beg.y;
+	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
+	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
 	return (point_t) { x, y };
 }
 
-static point_t interp_points(point_t a, point_t b, double t)
+static point_t interp_points(point_t a, point_t b)
 {
-	double s = 1.0 - t;
-	double x = s * a.x + t * b.x;
-	double y = s * a.y + t * b.y;
+	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
+	double y = (a.y + b.y) / 2.0;
 	return (point_t) { x, y };
 }
 
@@ -270,16 +267,16 @@ static double manhattan_distance(point_t a, point_t b)
 
 static int is_flat(bezier_t bezier)
 {
-	point_t mid = interp_points(bezier.beg, bezier.end, 0.5);
+	point_t mid = interp_points(bezier.beg, bezier.end);
 	double dist = manhattan_distance(bezier.ctrl, mid);
 	return dist <= 1.0;
 }
 
 static void split_bezier(bezier_t bezier, bezier_t segments[2])
 {
-	point_t pivot = interp_bezier(bezier, 0.5);
-	point_t ctrl0 = interp_points(bezier.beg, bezier.ctrl, 0.5);
-	point_t ctrl1 = interp_points(bezier.ctrl, bezier.end, 0.5);
+	point_t pivot = interp_bezier(bezier);
+	point_t ctrl0 = interp_points(bezier.beg, bezier.ctrl);
+	point_t ctrl1 = interp_points(bezier.ctrl, bezier.end);
 	segments[0] = (bezier_t) { bezier.beg, ctrl0, pivot };
 	segments[1] = (bezier_t) { pivot, ctrl1, bezier.end };
 }
