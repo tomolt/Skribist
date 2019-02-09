@@ -156,6 +156,65 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 	return co;
 }
 
+typedef struct {
+	long x, y;
+} Node;
+
+static void print_line(Node start, Node end)
+{
+	printf("(%ld, %ld) -> (%ld, %ld)\n", start.x, start.y, end.x, end.y);
+}
+
+static void print_bezier(Node start, Node pivot, Node end)
+{
+	printf("(%ld, %ld) -> (%ld, %ld) -> (%ld, %ld)\n",
+		start.x, start.y, pivot.x, pivot.y, end.x, end.y);
+}
+
+static int nodeState;
+static Node queuedStart;
+static Node queuedPivot;
+
+static Node interp_nodes(Node a, Node b)
+{
+	return (Node) { (a.x + b.x) / 2, (a.y + b.y) / 2 };
+}
+
+static void raster_node(Node newNode, int onCurve)
+{
+	switch (nodeState) {
+	case 0:
+		assert(onCurve);
+		queuedStart = newNode;
+		nodeState = 1;
+		break;
+	case 1:
+		if (onCurve) {
+			print_line(queuedStart, newNode);
+			queuedStart = newNode;
+			break;
+		} else {
+			queuedPivot = newNode;
+			nodeState = 2;
+			break;
+		}
+	case 2:
+		if (onCurve) {
+			print_bezier(queuedStart, queuedPivot, newNode);
+			queuedStart = newNode;
+			nodeState = 1;
+			break;
+		} else {
+			Node implicit = interp_nodes(queuedPivot, newNode);
+			print_bezier(queuedStart, queuedPivot, implicit);
+			queuedStart = implicit;
+			queuedPivot = newNode;
+			break;
+		}
+	default: assert(0);
+	}
+}
+
 static void raster_outline(OutlineInfo info)
 {
 	int pointIdx = 0;
@@ -176,7 +235,7 @@ static void raster_outline(OutlineInfo info)
 			for (int t = 0; t < times; ++t) { // TODO reverse & don't check on first iteration
 				long x = pull_coordinate(flags, &info.xPtr, prev_x);
 				long y = pull_coordinate(flags >> 1, &info.yPtr, prev_y);
-				printf("(%ld, %ld)\n", x, y);
+				raster_node((Node) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prev_x = x, prev_y = y;
 				++pointIdx;
 			}
