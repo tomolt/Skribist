@@ -35,14 +35,14 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #include <stdint.h>
 #include <assert.h>
 
+typedef long mapping_handle_t;
+
 #if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN 1
 #include <windows.h>
 
-typedef HANDLE FileMapHandle;
-
-static int unmap_file(void *addr, FileMapHandle mapping)
+static int unmap_file(void *addr, mapping_handle_t mapping)
 {
 	BOOL ret = TRUE;
 	if (addr != NULL)
@@ -52,28 +52,28 @@ static int unmap_file(void *addr, FileMapHandle mapping)
 	return ret ? 0 : -1;
 }
 
-static int map_file(char const *filename, void **addr, FileMapHandle *mapping)
+static int map_file(char const *filename, void **addr, mapping_handle_t *mapping)
 {
 	*addr = NULL;
 	*mapping = INVALID_HANDLE_VALUE;
-	
+
 	HANDLE descr = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (descr == INVALID_HANDLE_VALUE) goto fail;
-	
+
 	DWORD high, low = GetFileSize(descr, &high);
 	if (low == INVALID_FILE_SIZE) goto fail;
-	
+
 	*mapping = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
 	if (*mapping == NULL) goto fail;
-	
+
 	*addr = MapViewOfFile(*mapping, FILE_MAP_READ, 0, 0, 0);
 	if (*addr == NULL) goto fail;
-	
+
 	BOOL close_ret = CloseHandle(descr);
 	if (!close_ret) goto fail;
-	
+
 	return 0;
-	
+
 fail:
 	// don't care about further return values - we're already failing.
 	if (descr != INVALID_HANDLE_VALUE)
@@ -89,15 +89,14 @@ fail:
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <limits.h>
 
-typedef off_t FileMapHandle;
-
-static int unmap_file(void *addr, FileMapHandle mapping)
+static int unmap_file(void *addr, mapping_handle_t mapping)
 {
 	return addr == MAP_FAILED ? -1 : munmap(addr, mapping);
 }
 
-static int map_file(char const *filename, void **addr, FileMapHandle *mapping)
+static int map_file(char const *filename, void **addr, mapping_handle_t *mapping)
 {
 	int ret;
 
@@ -105,20 +104,21 @@ static int map_file(char const *filename, void **addr, FileMapHandle *mapping)
 
 	int descr = open(filename, O_RDONLY);
 	if (descr < 0) goto fail;
-	
+
 	struct stat stat;
 	ret = fstat(descr, &stat);
 	if (ret != 0) goto fail;
+	if (stat.st_size > LONG_MAX) goto fail;
 	*mapping = stat.st_size;
-	
+
 	*addr = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
 	if (*addr == MAP_FAILED) goto fail;
-	
+
 	ret = close(descr);
 	if (ret != 0) goto fail;
 
 	return 0;
-	
+
 fail:
 	// don't care about further return values - we're already failing.
 	if (descr >= 0)
@@ -341,10 +341,10 @@ int main(int argc, char const *argv[])
 	int ret;
 
 	BYTES1 *rawData;
-	FileMapHandle mapping;
+	mapping_handle_t mapping;
 	ret = map_file("Ubuntu-C.ttf", (void **) &rawData, &mapping);
 	assert(ret == 0);
-	
+
 	OffsetCache offcache = cache_offsets((offsetTbl *) rawData);
 
 	print_head(rawData + offcache.head);
