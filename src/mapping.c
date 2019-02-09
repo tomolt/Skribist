@@ -1,7 +1,5 @@
 #include "mapping.h"
 
-typedef long mapping_handle_t;
-
 #if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN 1
