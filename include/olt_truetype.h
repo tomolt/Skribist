@@ -56,33 +56,16 @@ typedef enum {
 	OLT_RGBA_128_FLOAT
 } olt_Format;
 
-#define OLT_ESTIMATE_SPACE ((void *) 0)
-
-/*
-On the topic of memory allocation:
-
-In olt_truetype, every procedure that needs extra space for computation can be executed in one of two ways:
-
-Either, you simply pass in input & output arguments as expected, and leave 'space' as NULL, which means that
-the procedure will internally allocate it's own space via malloc. If usage of malloc were to be disabled, then this operation would fail.
-
-Alternatively, if you want to manage the extra space yourself, you can call the procedure like in the
-following snippet:
-*/
-#if 0
-
-// Let olt_procedure() refer to said procedure.
-size_t amount_of_space;
-err = olt_procedure(in1, in2, OLT_ESTIMATE_SPACE /* or simply NULL */, &amount_of_space);
-// error checking goes here
-void *extra_space = my_own_allocator(amount_of_space);
-err = olt_procedure(in1, in2, out, extra_space);
-// error checking goes here
-
-#endif
-
 // TODO most fitting type
 typedef unsigned long olt_Glyph;
+// TODO most fitting type
+typedef unsigned long olt_Size;
+
+typedef struct {
+	void *userdata;
+	void *(*alloc)(olt_Size, void *);
+	void (*free)(void *, void *);
+} olt_Allocator;
 
 typedef struct olt_Font olt_Font;
 typedef struct olt_Parse olt_Parse;
@@ -93,15 +76,15 @@ olt_Status olt_open_font_file(char const *filename, olt_Font *font);
 olt_Status olt_open_font_memory(void const *addr, olt_Font *font);
 olt_Status olt_close_font(olt_Font *font);
 
-olt_Status olt_draw_nt_string(char const *string, olt_Font *font, void *image, void *space);
+olt_Status olt_draw_nt_string(char const *string, olt_Font *font, void *image);
 olt_Status olt_draw_len_string(unsigned long length,
-	char const *string, olt_Font *font, void *image, void *space);
+	char const *string, olt_Font *font, void *image);
 
-olt_Status olt_draw_glyph(olt_Font *font, void *image, void *space);
+olt_Status olt_draw_glyph(olt_Font *font, void *image);
 
-olt_Status olt_parse_outline(olt_Glyph glyph, olt_Font *font, olt_Parse *parse, void *space);
-olt_Status olt_tessel_outline(olt_Parse *parse, olt_Tessel *tessel, void *space);
-olt_Status olt_raster_outline(olt_Tessel *tessel, olt_Raster *raster, void *space);
-olt_Status olt_gather_outline(olt_Format format, olt_Raster *raster, void *image, void *space);
+olt_Status olt_parse_outline(olt_Glyph glyph, olt_Font *font, olt_Parse *parse);
+olt_Status olt_tessel_outline(olt_Parse *parse, olt_Tessel *tessel);
+olt_Status olt_raster_outline(olt_Tessel *tessel, olt_Raster *raster);
+olt_Status olt_gather_outline(olt_Format format, olt_Raster *raster, void *image);
 
 #endif
