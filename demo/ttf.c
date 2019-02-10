@@ -86,7 +86,7 @@ int main(int argc, char const *argv[])
 
 	BYTES1 *rawData;
 	mapping_handle_t mapping;
-	ret = olt_INTERN_map_file("Ubuntu-C.ttf", (void **) &rawData, &mapping);
+	ret = olt_INTERN_map_file("../demo/Ubuntu-C.ttf", (void **) &rawData, &mapping);
 	assert(ret == 0);
 
 	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
