@@ -32,16 +32,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int olt_INTERN_unmap_file(void *addr, mapping_handle_t mapping)
 {
+	HANDLE mappingHandle = (HANDLE) mapping;
 	BOOL ret = TRUE;
 	ret &= addr == NULL ? FALSE : UnmapViewOfFile(addr);
-	ret &= mapping == INVALID_HANDLE_VALUE ? FALSE : CloseHandle(mapping);
+	ret &= mappingHandle == INVALID_HANDLE_VALUE ? FALSE : CloseHandle(mappingHandle);
 	return ret ? 0 : -1;
 }
 
 int olt_INTERN_map_file(char const *filename, void **addr, mapping_handle_t *mapping)
 {
+	HANDLE *mappingHandle = (HANDLE *) mapping;
+	
 	*addr = NULL;
-	*mapping = INVALID_HANDLE_VALUE;
+	*mappingHandle = INVALID_HANDLE_VALUE;
 
 	HANDLE descr = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (descr == INVALID_HANDLE_VALUE) goto fail;
@@ -49,10 +52,10 @@ int olt_INTERN_map_file(char const *filename, void **addr, mapping_handle_t *map
 	DWORD high, low = GetFileSize(descr, &high);
 	if (low == INVALID_FILE_SIZE) goto fail;
 
-	*mapping = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
-	if (*mapping == NULL) goto fail;
+	*mappingHandle = CreateFileMapping(descr, NULL, PAGE_READONLY, high, low, NULL);
+	if (*mappingHandle == NULL) goto fail;
 
-	*addr = MapViewOfFile(*mapping, FILE_MAP_READ, 0, 0, 0);
+	*addr = MapViewOfFile(*mappingHandle, FILE_MAP_READ, 0, 0, 0);
 	if (*addr == NULL) goto fail;
 
 	BOOL close_ret = CloseHandle(descr);
@@ -64,7 +67,7 @@ fail:
 	// don't care about further return values - we're already failing.
 	if (descr != INVALID_HANDLE_VALUE)
 		CloseHandle(descr);
-	olt_INTERN_unmap_file(str);
+	olt_INTERN_unmap_file(*addr, *mapping);
 
 	return -1;
 }

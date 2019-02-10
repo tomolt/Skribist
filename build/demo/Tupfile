@@ -1,2 +1,4 @@
+include_rules
+
 .gitignore
-: foreach ../../demo/*.c |> clang -c -g -pedantic -Wall -Wextra %f -o %o -I../../src |> %B.o
+: foreach ../../demo/*.c |> !cc |>

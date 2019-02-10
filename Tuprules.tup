@@ -1,0 +1,15 @@
+CC := tcc
+CFLAGS := -pedantic -Wall -Wextra
+LDFLAGS := -g
+LDLIBS :=
+
+ifeq (@(TUP_PLATFORM),win32)
+DEMO_TARGET := demo.exe
+TTF_TARGET := ttf.exe
+else
+DEMO_TARGET := demo
+TTF_TARGET := ttf
+endif
+
+!cc = |> $(CC) -c $(CFLAGS) $(LDFLAGS) %f -o %o -I../../src |> %B.o
+!ld = |> $(CC) $(LDFLAGS) %f -o %o $(LDLIBS) |>

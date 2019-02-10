@@ -1,3 +1,5 @@
+include_rules
+
 .gitignore
-: ../build/demo/demo.o |> clang -g %f -o %o -lm |> demo
-: ../build/demo/ttf.o ../build/src/*.o |> clang -g %f -o %o |> ttf
+: ../build/demo/demo.o |> !ld |> $(DEMO_TARGET)
+: ../build/demo/ttf.o ../build/src/*.o |> !ld |> $(TTF_TARGET)
