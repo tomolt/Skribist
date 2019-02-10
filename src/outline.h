@@ -28,4 +28,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define OLT_INTERN_PARSE_H
 
+typedef struct {
+	long x, y;
+} Node;
+
+typedef struct {
+	Node beg, ctrl, end;
+} Curve;
+
+struct olt_Parse {
+	int numCurves;
+	Curve *curves;
+};
+
+typedef struct olt_Parse olt_Parse; // REDUNDANT
+
 void olt_INTERN_parse_outline(void *addr);

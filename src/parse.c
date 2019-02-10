@@ -56,12 +56,14 @@ typedef struct {
 	BYTES1 *flagsPtr;
 	BYTES1 *xPtr;
 	BYTES1 *yPtr;
+	int numCurves;
 } OutlineInfo;
 
 static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	OutlineInfo info = { 0 };
+	// TODO FIXME compute numCurves
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
 	int numContours = ri16(sh->numContours);
@@ -117,24 +119,10 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 	return co;
 }
 
-typedef struct {
-	long x, y;
-} Node;
-
-static void print_line(Node start, Node end)
-{
-	printf("(%ld, %ld) -> (%ld, %ld)\n", start.x, start.y, end.x, end.y);
-}
-
-static void print_bezier(Node start, Node pivot, Node end)
-{
-	printf("(%ld, %ld) -> (%ld, %ld) -> (%ld, %ld)\n",
-		start.x, start.y, pivot.x, pivot.y, end.x, end.y);
-}
-
 static int olt_GLOBAL_nodeState;
 static Node olt_GLOBAL_queuedStart;
 static Node olt_GLOBAL_queuedPivot;
+static olt_Parse olt_GLOBAL_parse;
 
 static Node interp_nodes(Node a, Node b)
 {
@@ -151,7 +139,9 @@ static void parse_node(Node newNode, int onCurve)
 		break;
 	case 1:
 		if (onCurve) {
-			print_line(olt_GLOBAL_queuedStart, newNode);
+			Node pivot = interp_nodes(olt_GLOBAL_queuedStart, newNode);
+			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
 			olt_GLOBAL_queuedStart = newNode;
 			break;
 		} else {
@@ -161,13 +151,15 @@ static void parse_node(Node newNode, int onCurve)
 		}
 	case 2:
 		if (onCurve) {
-			print_bezier(olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode);
+			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
 			olt_GLOBAL_queuedStart = newNode;
 			olt_GLOBAL_nodeState = 1;
 			break;
 		} else {
 			Node implicit = interp_nodes(olt_GLOBAL_queuedPivot, newNode);
-			print_bezier(olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit);
+			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
 			olt_GLOBAL_queuedStart = implicit;
 			olt_GLOBAL_queuedPivot = newNode;
 			break;
@@ -181,8 +173,6 @@ static void parse_outline(OutlineInfo info)
 	int pointIdx = 0;
 
 	for (int c = 0; c < info.numContours; ++c) {
-		printf("~~ Contour #%d ~~\n", c);
-
 		long prevX = 0, prevY = 0;
 
 		int endPt = ru16(info.endPts[c]);
@@ -207,5 +197,12 @@ static void parse_outline(OutlineInfo info)
 void olt_INTERN_parse_outline(void *addr)
 {
 	OutlineInfo info = gather_outline_info(addr);
+	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
+
+	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i) {
+		Curve curve = olt_GLOBAL_parse.curves[i];
+		printf("(%ld, %ld) -> (%ld, %ld) -> (%ld, %ld)\n",
+			curve.beg.x, curve.beg.y, curve.ctrl.x, curve.ctrl.y, curve.end.x, curve.end.y);
+	}
 }
