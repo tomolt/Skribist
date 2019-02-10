@@ -1,1 +1,2 @@
+.gitignore
 : foreach ../../src/*.c |> clang -c -g -pedantic -Wall -Wextra %f -o %o |> %B.o
