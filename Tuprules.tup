@@ -1,15 +1,18 @@
-CC := tcc
+CC := clang
 CFLAGS := -pedantic -Wall -Wextra
 LDFLAGS := -g
-LDLIBS :=
+LDLIBS := -lm
 
 ifeq (@(TUP_PLATFORM),win32)
+LIBRARY_TARGET := olt_truetype.lib
 DEMO_TARGET := demo.exe
 TTF_TARGET := ttf.exe
 else
+LIBRARY_TARGET := libolt_truetype.a
 DEMO_TARGET := demo
 TTF_TARGET := ttf
 endif
 
 !cc = |> $(CC) -c $(CFLAGS) $(LDFLAGS) %f -o %o -I../../src |> %B.o
 !ld = |> $(CC) $(LDFLAGS) %f -o %o $(LDLIBS) |>
+!ar = |> ar -rcs %o %f |>

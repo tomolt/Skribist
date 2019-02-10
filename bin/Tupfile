@@ -1,5 +1,6 @@
 include_rules
 
 .gitignore
+: ../build/src/*.o |> !ar |> $(LIBRARY_TARGET)
 : ../build/demo/demo.o |> !ld |> $(DEMO_TARGET)
-: ../build/demo/ttf.o ../build/src/*.o |> !ld |> $(TTF_TARGET)
+: ../build/demo/ttf.o $(LIBRARY_TARGET) |> !ld |> $(TTF_TARGET)
