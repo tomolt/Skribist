@@ -65,32 +65,14 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 #include <stdint.h>
 
 #include "raster.h"
+#include "gather.h"
 
-#include <stdlib.h>
 #include <stdio.h>
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
+#include <stdlib.h>
 
 static Point cns_point(double x, double y)
 {
 	return (Point) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
-}
-
-/*
-
-gather() right now is mostly a stub. Further on in development it should
-also do conversion to user-specified pixel formats, simple color fill,
-gamma correction and sub-pixel rendering (if enabled).
-
-*/
-
-static void gather(void)
-{
-	int32_t acc = 0;
-	for (int i = 0; i < WIDTH * HEIGHT; ++i) {
-		acc += olt_GLOBAL_raster[i];
-		olt_GLOBAL_image[i] = min(abs(acc), 255);
-	}
 }
 
 static void fmt_le_dword(char *buf, uint32_t v)
@@ -142,7 +124,7 @@ int main(int argc, char const *argv[])
 	Bezier bez2 = { beg2, ctrl2, end2 };
 	olt_INTERN_raster_bezier(bez2);
 
-	gather();
+	olt_INTERN_gather();
 	write_bmp();
 	return EXIT_SUCCESS;
 }
