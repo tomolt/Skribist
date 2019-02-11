@@ -62,13 +62,21 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 
 */
 
+/*
+
+You may notice that most computations right now are performed on floating-point numbers.
+Once the exact algorithmic implementation is in place and locked down, these will
+(hopefully) be converted to integer operations. Among other things, this would allow for
+more stability in the output and if bounded correctly can result in code that is much
+easier to parallelize with SIMD instructions.
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 #include <assert.h>
-
-#include "rational.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -79,12 +87,14 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 
 // Please update glossary when messing with units.
 typedef struct {
-	Rational x, y;
+	double x, y;
 } Point;
 
 typedef struct {
-	Point beg;
-	Point diff;
+	double ox; // x of origin point
+	double oy; // y of origin point
+	double dx; // difference along x
+	double dy; // difference along y
 } Line;
 
 typedef struct {
@@ -105,46 +115,24 @@ typedef struct {
 static int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
 static uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-static Rational cns_coord(Rational v, int span)
+static Point cns_point(double x, double y)
 {
-	Rational const one = R(1, 1), half = R(1, 2);
-	return mulr(half, addr(one, mulr( addr(one, v), R(span, 1))));
-}
-
-static Point cns_point(Rational x, Rational y)
-{
-	return (Point) { cns_coord(x, WIDTH), cns_coord(y, HEIGHT) };
-}
-
-static Point add_point(Point a, Point b)
-{
-	return (Point) { addr(a.x, b.x), addr(a.y, b.y) };
-}
-
-static Point sub_point(Point a, Point b)
-{
-	return (Point) { subr(a.x, b.x), subr(a.y, b.y) };
+	return (Point) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
 }
 
 static Line cns_line(Point beg, Point end)
 {
-	return (Line) { beg, sub_point(end, beg) };
+	return (Line) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
 }
 
 static Dot cns_dot(Point beg, Point end)
 {
-	// TODO cleanup
-	Rational const hacky_epsilon = R(1, 1000);
-	int px = min(
-		floorr(addr(beg.x, hacky_epsilon)).numer,
-		floorr(addr(end.x, hacky_epsilon)).numer);
-	int py = min(
-		floorr(addr(beg.y, hacky_epsilon)).numer,
-		floorr(addr(end.y, hacky_epsilon)).numer);
-	int bx = roundr(mulr(subr(beg.x, R(px, 1)), R(255, 1))).numer;
-	int by = roundr(mulr(subr(beg.y, R(py, 1)), R(255, 1))).numer;
-	int ex = roundr(mulr(subr(end.x, R(px, 1)), R(255, 1))).numer;
-	int ey = roundr(mulr(subr(end.y, R(py, 1)), R(255, 1))).numer;
+	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
+	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
+	int bx = round((beg.x - px) * 255.0);
+	int by = round((beg.y - py) * 255.0);
+	int ex = round((end.x - px) * 255.0);
+	int ey = round((end.y - py) * 255.0);
 	return (Dot) { px, py, bx, by, ex, ey };
 }
 
@@ -178,52 +166,53 @@ integer pixel coordinates by itself without having to rely on the hacky cns_dot(
 
 static void raster_line(Line line)
 {
-	Rational sx, sy; // step size along each axis
-	Rational xt, yt; // t of next vertical / horizontal intersection
+	double sx, sy; // step size along each axis
+	double xt, yt; // t of next vertical / horizontal intersection
 
-	if (line.diff.x.numer != 0) {
-		sx = absr(invr(line.diff.x));
-		if (line.diff.x.numer > 0) {
-			xt = mulr(sx, subr(ceilr(line.beg.x), line.beg.x));
+	if (line.dx != 0.0) {
+		sx = fabs(1.0 / line.dx);
+		if (line.dx > 0.0) {
+			xt = sx * (ceil(line.ox) - line.ox);
 		} else {
-			xt = mulr(sx, subr(line.beg.x, floorr(line.beg.x)));
+			xt = sx * (line.ox - floor(line.ox));
 		}
 	} else {
-		sx = R(0, 1);
-		xt = R(2, 1); // Any number larger than 1 works
+		sx = 0.0;
+		xt = 9.9;
 	}
 
-	if (line.diff.y.numer != 0) {
-		sy = absr(invr(line.diff.y));
-		if (line.diff.y.numer > 0) {
-			yt = mulr(sy, subr(ceilr(line.beg.y), line.beg.y));
+	if (line.dy != 0.0) {
+		sy = fabs(1.0 / line.dy);
+		if (line.dy > 0.0) {
+			yt = sy * (ceil(line.oy) - line.oy);
 		} else {
-			yt = mulr(sy, subr(line.beg.y, floorr(line.beg.y)));
+			yt = sy * (line.oy - floor(line.oy));
 		}
 	} else {
-		sy = R(0, 1);
-		yt = R(2, 1); // Any number larger than 1 works
+		sy = 0.0;
+		yt = 9.9;
 	}
 
-	Rational prev_t = R(0, 1);
-	Point prev_pt = line.beg, pt = prev_pt;
+	double prev_t = 0.0;
+	Point prev_pt = { line.ox, line.oy };
+	Point pt = { line.ox, line.oy };
 
-	while (xt.numer <= (int) xt.denom || yt.numer <= (int) yt.denom) {
-		Rational t;
+	while (xt <= 1.0 || yt <= 1.0) {
+		double t;
 
-		if (cmpr(xt, yt) < 0) {
+		if (xt < yt) {
 			t = xt;
-			xt = addr(xt, sx);
+			xt += sx;
 		} else {
 			t = yt;
-			yt = addr(yt, sy);
+			yt += sy;
 		}
 
-		if (t.numer == prev_t.numer && t.denom == prev_t.denom) continue;
+		if (t == prev_t) continue;
 
-		Rational td = subr(t, prev_t);
-		pt.x = addr(pt.x, mulr(td, line.diff.x));
-		pt.y = addr(pt.y, mulr(td, line.diff.y));
+		double td = t - prev_t;
+		pt.x += td * line.dx;
+		pt.y += td * line.dy;
 
 		raster_dot(cns_dot(prev_pt, pt));
 
@@ -231,38 +220,46 @@ static void raster_line(Line line)
 		prev_pt = pt;
 	}
 
-	Point last_pt = add_point(line.beg, line.diff);
+	Point last_pt = { line.ox + line.dx, line.oy + line.dy };
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
+/*
+
+Once the points of bezier curves are represented in relative coordinates
+to each other, interp_points() and manhattan_distance() should just operate
+on lines for simplicity.
+
+*/
+
 static Point interp_bezier(Bezier bezier)
 {
-	Rational ax = addr(subr(bezier.beg.x, mulr(bezier.ctrl.x, R(2, 1))), bezier.end.x);
-	Rational ay = addr(subr(bezier.beg.y, mulr(bezier.ctrl.y, R(2, 1))), bezier.end.y);
-	Rational bx = mulr(subr(bezier.ctrl.x, bezier.beg.x), R(2, 1));
-	Rational by = mulr(subr(bezier.ctrl.y, bezier.beg.y), R(2, 1));
-	Rational x = addr(addr(mulr(ax, R(1, 4)), mulr(bx, R(1, 2))), bezier.beg.x);
-	Rational y = addr(addr(mulr(ay, R(1, 4)), mulr(by, R(1, 2))), bezier.beg.y);
+	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
+	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
+	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
+	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
+	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
+	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
 	return (Point) { x, y };
 }
 
 static Point interp_points(Point a, Point b)
 {
-	Rational x = mulr(addr(a.x, b.x), R(1, 2)); // TODO more bounded computation
-	Rational y = mulr(addr(a.y, b.y), R(1, 2));
+	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
+	double y = (a.y + b.y) / 2.0;
 	return (Point) { x, y };
 }
 
-static Rational manhattan_distance(Point a, Point b)
+static double manhattan_distance(Point a, Point b)
 {
-	return addr(absr(subr(a.x, b.x)), absr(subr(a.y, b.y)));
+	return fabs(a.x - b.x) + fabs(a.y - b.y);
 }
 
 static int is_flat(Bezier bezier)
 {
 	Point mid = interp_points(bezier.beg, bezier.end);
-	Rational dist = manhattan_distance(bezier.ctrl, mid);
-	return cmpr(dist, R(1, 2)) <= 0;
+	double dist = manhattan_distance(bezier.ctrl, mid);
+	return dist <= 1.0;
 }
 
 static void split_bezier(Bezier bezier, Bezier segments[2])
@@ -340,15 +337,15 @@ int main(int argc, char const *argv[])
 {
 	(void) argc, (void) argv;
 
-	Point beg1  = cns_point(R(-1, 4), R(0, 1));
-	Point ctrl1 = cns_point(R(0, 1), R(1, 2));
-	Point end1  = cns_point(R(1, 4), R(0, 1));
+	Point beg1  = cns_point(-0.25, 0.0);
+	Point ctrl1 = cns_point(0.0, 0.5);
+	Point end1  = cns_point(0.25, 0.0);
 	Bezier bez1 = { beg1, ctrl1, end1 };
 	raster_bezier(bez1);
 
-	Point beg2  = cns_point(R(1, 4), R(0, 1));
-	Point ctrl2 = cns_point(R(0, 1), R(-1, 2));
-	Point end2  = cns_point(R(-1, 4), R(0, 1));
+	Point beg2  = cns_point(0.25, 0.0);
+	Point ctrl2 = cns_point(0.0, -0.5);
+	Point end2  = cns_point(-0.25, 0.0);
 	Bezier bez2 = { beg2, ctrl2, end2 };
 	raster_bezier(bez2);
 
