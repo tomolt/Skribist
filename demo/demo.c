@@ -88,14 +88,14 @@ easier to parallelize with SIMD instructions.
 // Please update glossary when messing with units.
 typedef struct {
 	double x, y;
-} point_t;
+} Point;
 
 typedef struct {
 	double ox; // x of origin point
 	double oy; // y of origin point
 	double dx; // difference along x
 	double dy; // difference along y
-} line_t;
+} Line;
 
 typedef struct {
 	int px;
@@ -104,28 +104,28 @@ typedef struct {
 	int by;
 	int ex;
 	int ey;
-} dot_t;
+} Dot;
 
 typedef struct {
-	point_t beg;
-	point_t ctrl;
-	point_t end;
-} bezier_t;
+	Point beg;
+	Point ctrl;
+	Point end;
+} Bezier;
 
 static int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
 static uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-static point_t cns_point(double x, double y)
+static Point cns_point(double x, double y)
 {
-	return (point_t) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
+	return (Point) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
 }
 
-static line_t cns_line(point_t beg, point_t end)
+static Line cns_line(Point beg, Point end)
 {
-	return (line_t) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
+	return (Line) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
 }
 
-static dot_t cns_dot(point_t beg, point_t end)
+static Dot cns_dot(Point beg, Point end)
 {
 	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
 	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
@@ -133,10 +133,10 @@ static dot_t cns_dot(point_t beg, point_t end)
 	int by = round((beg.y - py) * 255.0);
 	int ex = round((end.x - px) * 255.0);
 	int ey = round((end.y - py) * 255.0);
-	return (dot_t) { px, py, bx, by, ex, ey };
+	return (Dot) { px, py, bx, by, ex, ey };
 }
 
-static void raster_dot(dot_t dot)
+static void raster_dot(Dot dot)
 {
 	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
 	int cover = abs(dot.ey - dot.by); // in the range 0 - 255
@@ -164,7 +164,7 @@ integer pixel coordinates by itself without having to rely on the hacky cns_dot(
 
 */
 
-static void raster_line(line_t line)
+static void raster_line(Line line)
 {
 	double sx, sy; // step size along each axis
 	double xt, yt; // t of next vertical / horizontal intersection
@@ -194,8 +194,8 @@ static void raster_line(line_t line)
 	}
 
 	double prev_t = 0.0;
-	point_t prev_pt = { line.ox, line.oy };
-	point_t pt = { line.ox, line.oy };
+	Point prev_pt = { line.ox, line.oy };
+	Point pt = { line.ox, line.oy };
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
@@ -220,7 +220,7 @@ static void raster_line(line_t line)
 		prev_pt = pt;
 	}
 
-	point_t last_pt = { line.ox + line.dx, line.oy + line.dy };
+	Point last_pt = { line.ox + line.dx, line.oy + line.dy };
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
@@ -232,7 +232,7 @@ on lines for simplicity.
 
 */
 
-static point_t interp_bezier(bezier_t bezier)
+static Point interp_bezier(Bezier bezier)
 {
 	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
 	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
@@ -240,43 +240,43 @@ static point_t interp_bezier(bezier_t bezier)
 	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
 	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
 	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
-	return (point_t) { x, y };
+	return (Point) { x, y };
 }
 
-static point_t interp_points(point_t a, point_t b)
+static Point interp_points(Point a, Point b)
 {
 	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
 	double y = (a.y + b.y) / 2.0;
-	return (point_t) { x, y };
+	return (Point) { x, y };
 }
 
-static double manhattan_distance(point_t a, point_t b)
+static double manhattan_distance(Point a, Point b)
 {
 	return fabs(a.x - b.x) + fabs(a.y - b.y);
 }
 
-static int is_flat(bezier_t bezier)
+static int is_flat(Bezier bezier)
 {
-	point_t mid = interp_points(bezier.beg, bezier.end);
+	Point mid = interp_points(bezier.beg, bezier.end);
 	double dist = manhattan_distance(bezier.ctrl, mid);
 	return dist <= 1.0;
 }
 
-static void split_bezier(bezier_t bezier, bezier_t segments[2])
+static void split_bezier(Bezier bezier, Bezier segments[2])
 {
-	point_t pivot = interp_bezier(bezier);
-	point_t ctrl0 = interp_points(bezier.beg, bezier.ctrl);
-	point_t ctrl1 = interp_points(bezier.ctrl, bezier.end);
-	segments[0] = (bezier_t) { bezier.beg, ctrl0, pivot };
-	segments[1] = (bezier_t) { pivot, ctrl1, bezier.end };
+	Point pivot = interp_bezier(bezier);
+	Point ctrl0 = interp_points(bezier.beg, bezier.ctrl);
+	Point ctrl1 = interp_points(bezier.ctrl, bezier.end);
+	segments[0] = (Bezier) { bezier.beg, ctrl0, pivot };
+	segments[1] = (Bezier) { pivot, ctrl1, bezier.end };
 }
 
-static void raster_bezier(bezier_t bezier)
+static void raster_bezier(Bezier bezier)
 {
 	if (is_flat(bezier)) {
 		raster_line(cns_line(bezier.beg, bezier.end));
 	} else {
-		bezier_t segments[2];
+		Bezier segments[2];
 		split_bezier(bezier, segments);
 		raster_bezier(segments[0]); // TODO don't overflow the stack
 		raster_bezier(segments[1]); // in pathological cases.
@@ -337,16 +337,16 @@ int main(int argc, char const *argv[])
 {
 	(void) argc, (void) argv;
 
-	point_t beg1  = cns_point(-0.25, 0.0);
-	point_t ctrl1 = cns_point(0.0, 0.5);
-	point_t end1  = cns_point(0.25, 0.0);
-	bezier_t bez1 = { beg1, ctrl1, end1 };
+	Point beg1  = cns_point(-0.25, 0.0);
+	Point ctrl1 = cns_point(0.0, 0.5);
+	Point end1  = cns_point(0.25, 0.0);
+	Bezier bez1 = { beg1, ctrl1, end1 };
 	raster_bezier(bez1);
 
-	point_t beg2  = cns_point(0.25, 0.0);
-	point_t ctrl2 = cns_point(0.0, -0.5);
-	point_t end2  = cns_point(-0.25, 0.0);
-	bezier_t bez2 = { beg2, ctrl2, end2 };
+	Point beg2  = cns_point(0.25, 0.0);
+	Point ctrl2 = cns_point(0.0, -0.5);
+	Point end2  = cns_point(-0.25, 0.0);
+	Bezier bez2 = { beg2, ctrl2, end2 };
 	raster_bezier(bez2);
 
 	gather();
