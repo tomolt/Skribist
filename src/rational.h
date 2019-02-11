@@ -33,5 +33,22 @@ typedef struct {
 	unsigned int denom;
 } Rational;
 
+Rational olt_INTERN_abs_rational(Rational rat);
+Rational olt_INTERN_inv_rational(Rational rat);
 Rational olt_INTERN_add_rational(Rational a, Rational b);
+Rational olt_INTERN_sub_rational(Rational a, Rational b);
 Rational olt_INTERN_mul_rational(Rational a, Rational b);
+Rational olt_INTERN_rational_floor(Rational rat);
+Rational olt_INTERN_rational_ceil(Rational rat);
+Rational olt_INTERN_rational_round(Rational rat);
+
+#define R(n, d) ((Rational) { (n), (d) })
+
+#define absr(x)    olt_INTERN_abs_rational(x)
+#define invr(x)    olt_INTERN_inv_rational(x)
+#define addr(a, b) olt_INTERN_add_rational((a), (b))
+#define subr(a, b) olt_INTERN_sub_rational((a), (b))
+#define mulr(a, b) olt_INTERN_mul_rational((a), (b))
+#define floorr(x)  olt_INTERN_rational_floor(x)
+#define ceilr(x)   olt_INTERN_rational_ceil(x)
+#define roundr(x)  olt_INTERN_rational_round(x)
