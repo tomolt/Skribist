@@ -136,15 +136,15 @@ static Dot cns_dot(Point beg, Point end)
 	// TODO cleanup
 	Rational const hacky_epsilon = R(1, 1000);
 	int px = min(
-		floorr(addr(beg.x, hacky_epsilon)),
-		floorr(addr(end.x, hacky_epsilon)));
+		floorr(addr(beg.x, hacky_epsilon)).numer,
+		floorr(addr(end.x, hacky_epsilon)).numer);
 	int py = min(
-		floorr(addr(beg.y, hacky_epsilon)),
-		floorr(addr(end.y, hacky_epsilon)));
-	int bx = roundr(mulr(subr(beg.x, R(px, 1)), R(255, 1)));
-	int by = roundr(mulr(subr(beg.y, R(py, 1)), R(255, 1)));
-	int ex = roundr(mulr(subr(end.x, R(px, 1)), R(255, 1)));
-	int ey = roundr(mulr(subr(end.y, R(py, 1)), R(255, 1)));
+		floorr(addr(beg.y, hacky_epsilon)).numer,
+		floorr(addr(end.y, hacky_epsilon)).numer);
+	int bx = roundr(mulr(subr(beg.x, R(px, 1)), R(255, 1))).numer;
+	int by = roundr(mulr(subr(beg.y, R(py, 1)), R(255, 1))).numer;
+	int ex = roundr(mulr(subr(end.x, R(px, 1)), R(255, 1))).numer;
+	int ey = roundr(mulr(subr(end.y, R(py, 1)), R(255, 1))).numer;
 	return (Dot) { px, py, bx, by, ex, ey };
 }
 
@@ -196,9 +196,9 @@ static void raster_line(Line line)
 	if (line.diff.y.numer != 0) {
 		sy = absr(invr(line.diff.y));
 		if (line.diff.y.numer > 0) {
-			yt = sy * (ceil(line.beg.y) - line.beg.y);
+			yt = mulr(sy, subr(ceilr(line.beg.y), line.beg.y));
 		} else {
-			yt = sy * (line.beg.y - floor(line.beg.y));
+			yt = mulr(sy, subr(line.beg.y, floorr(line.beg.y)));
 		}
 	} else {
 		sy = R(0, 1);
@@ -208,20 +208,20 @@ static void raster_line(Line line)
 	Rational prev_t = R(0, 1);
 	Point prev_pt = line.beg, pt = prev_pt;
 
-	while (xt <= 1.0 || yt <= 1.0) {
+	while (xt.numer <= (int) xt.denom || yt.numer <= (int) yt.denom) {
 		Rational t;
 
-		if (xt < yt) {
+		if (cmpr(xt, yt) < 0) {
 			t = xt;
-			xt += sx;
+			xt = addr(xt, sx);
 		} else {
 			t = yt;
-			yt += sy;
+			yt = addr(yt, sy);
 		}
 
 		if (t.numer == prev_t.numer && t.denom == prev_t.denom) continue;
 
-		Rational td = t - prev_t;
+		Rational td = subr(t, prev_t);
 		pt.x = addr(pt.x, mulr(td, line.diff.x));
 		pt.y = addr(pt.y, mulr(td, line.diff.y));
 
@@ -231,46 +231,38 @@ static void raster_line(Line line)
 		prev_pt = pt;
 	}
 
-	Point last_pt = { line.beg.x + line.diff.x, line.beg.y + line.diff.y };
+	Point last_pt = add_point(line.beg, line.diff);
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
-/*
-
-Once the points of bezier curves are represented in relative coordinates
-to each other, interp_points() and manhattan_distance() should just operate
-on lines for simplicity.
-
-*/
-
 static Point interp_bezier(Bezier bezier)
 {
-	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
-	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
-	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
-	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
-	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
-	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
+	Rational ax = addr(subr(bezier.beg.x, mulr(bezier.ctrl.x, R(2, 1))), bezier.end.x);
+	Rational ay = addr(subr(bezier.beg.y, mulr(bezier.ctrl.y, R(2, 1))), bezier.end.y);
+	Rational bx = mulr(subr(bezier.ctrl.x, bezier.beg.x), R(2, 1));
+	Rational by = mulr(subr(bezier.ctrl.y, bezier.beg.y), R(2, 1));
+	Rational x = addr(addr(mulr(ax, R(1, 4)), mulr(bx, R(1, 2))), bezier.beg.x);
+	Rational y = addr(addr(mulr(ay, R(1, 4)), mulr(by, R(1, 2))), bezier.beg.y);
 	return (Point) { x, y };
 }
 
 static Point interp_points(Point a, Point b)
 {
-	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
-	double y = (a.y + b.y) / 2.0;
+	Rational x = mulr(addr(a.x, b.x), R(1, 2)); // TODO more bounded computation
+	Rational y = mulr(addr(a.y, b.y), R(1, 2));
 	return (Point) { x, y };
 }
 
-static double manhattan_distance(Point a, Point b)
+static Rational manhattan_distance(Point a, Point b)
 {
-	return fabs(a.x - b.x) + fabs(a.y - b.y);
+	return addr(absr(subr(a.x, b.x)), absr(subr(a.y, b.y)));
 }
 
 static int is_flat(Bezier bezier)
 {
 	Point mid = interp_points(bezier.beg, bezier.end);
-	double dist = manhattan_distance(bezier.ctrl, mid);
-	return dist <= 0.5;
+	Rational dist = manhattan_distance(bezier.ctrl, mid);
+	return cmpr(dist, R(1, 2)) <= 0;
 }
 
 static void split_bezier(Bezier bezier, Bezier segments[2])

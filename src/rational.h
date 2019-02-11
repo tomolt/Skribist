@@ -41,6 +41,7 @@ Rational olt_INTERN_mul_rational(Rational a, Rational b);
 Rational olt_INTERN_rational_floor(Rational rat);
 Rational olt_INTERN_rational_ceil(Rational rat);
 Rational olt_INTERN_rational_round(Rational rat);
+int olt_INTERN_rational_cmp(Rational a, Rational b);
 
 #define R(n, d) ((Rational) { (n), (d) })
 
@@ -52,3 +53,5 @@ Rational olt_INTERN_rational_round(Rational rat);
 #define floorr(x)  olt_INTERN_rational_floor(x)
 #define ceilr(x)   olt_INTERN_rational_ceil(x)
 #define roundr(x)  olt_INTERN_rational_round(x)
+#define cmpr(a, b) olt_INTERN_rational_cmp((a), (b))
+#define minr(a, b) ((cmpr((a), (b)) < 0) ? (a) : (b))

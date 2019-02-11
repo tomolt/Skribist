@@ -85,10 +85,15 @@ Rational olt_INTERN_rational_floor(Rational rat)
 
 Rational olt_INTERN_rational_ceil(Rational rat)
 {
-	return ;
+	return R((rat.numer + rat.denom - 1) / rat.denom, 1);
 }
 
 Rational olt_INTERN_rational_round(Rational rat)
 {
 	return floorr(addr(rat, R(1, 2)));
+}
+
+int olt_INTERN_rational_cmp(Rational a, Rational b)
+{
+	return a.numer * b.denom - b.numer * a.denom;
 }
