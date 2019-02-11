@@ -45,6 +45,7 @@ MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
 #include "mapping.h"
 #include "header.h"
 #include "reading.h"
+#include "rational.h"
 #include "outline.h"
 
 #include <stdio.h>

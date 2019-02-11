@@ -23,10 +23,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
+// depends on rational.h
+
 #ifdef OLT_INTERN_PARSE_H
 #error multiple inclusion
 #endif
 #define OLT_INTERN_PARSE_H
+
+typedef struct {
+	Rational x, y;
+} Point;
 
 typedef struct {
 	long x, y;
@@ -40,6 +46,10 @@ struct olt_Parse {
 	int numCurves;
 	Curve *curves;
 };
+
+typedef struct {
+	Point move, scale;
+} Transform;
 
 typedef struct olt_Parse olt_Parse; // REDUNDANT
 

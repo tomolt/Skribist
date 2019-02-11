@@ -25,6 +25,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
+#include "rational.h"
 #include "outline.h"
 #include "reading.h"
 
