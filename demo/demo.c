@@ -91,10 +91,8 @@ typedef struct {
 } Point;
 
 typedef struct {
-	double ox; // x of origin point
-	double oy; // y of origin point
-	double dx; // difference along x
-	double dy; // difference along y
+	Point beg;
+	Point diff;
 } Line;
 
 typedef struct {
@@ -122,7 +120,7 @@ static Point cns_point(double x, double y)
 
 static Line cns_line(Point beg, Point end)
 {
-	return (Line) { beg.x, beg.y, end.x - beg.x, end.y - beg.y };
+	return (Line) { beg, (Point) { end.x - beg.x, end.y - beg.y } };
 }
 
 static Dot cns_dot(Point beg, Point end)
@@ -169,24 +167,24 @@ static void raster_line(Line line)
 	double sx, sy; // step size along each axis
 	double xt, yt; // t of next vertical / horizontal intersection
 
-	if (line.dx != 0.0) {
-		sx = fabs(1.0 / line.dx);
-		if (line.dx > 0.0) {
-			xt = sx * (ceil(line.ox) - line.ox);
+	if (line.diff.x != 0.0) {
+		sx = fabs(1.0 / line.diff.x);
+		if (line.diff.x > 0.0) {
+			xt = sx * (ceil(line.beg.x) - line.beg.x);
 		} else {
-			xt = sx * (line.ox - floor(line.ox));
+			xt = sx * (line.beg.x - floor(line.beg.x));
 		}
 	} else {
 		sx = 0.0;
 		xt = 9.9;
 	}
 
-	if (line.dy != 0.0) {
-		sy = fabs(1.0 / line.dy);
-		if (line.dy > 0.0) {
-			yt = sy * (ceil(line.oy) - line.oy);
+	if (line.diff.y != 0.0) {
+		sy = fabs(1.0 / line.diff.y);
+		if (line.diff.y > 0.0) {
+			yt = sy * (ceil(line.beg.y) - line.beg.y);
 		} else {
-			yt = sy * (line.oy - floor(line.oy));
+			yt = sy * (line.beg.y - floor(line.beg.y));
 		}
 	} else {
 		sy = 0.0;
@@ -194,8 +192,7 @@ static void raster_line(Line line)
 	}
 
 	double prev_t = 0.0;
-	Point prev_pt = { line.ox, line.oy };
-	Point pt = { line.ox, line.oy };
+	Point prev_pt = line.beg, pt = prev_pt;
 
 	while (xt <= 1.0 || yt <= 1.0) {
 		double t;
@@ -211,8 +208,8 @@ static void raster_line(Line line)
 		if (t == prev_t) continue;
 
 		double td = t - prev_t;
-		pt.x += td * line.dx;
-		pt.y += td * line.dy;
+		pt.x += td * line.diff.x;
+		pt.y += td * line.diff.y;
 
 		raster_dot(cns_dot(prev_pt, pt));
 
@@ -220,7 +217,7 @@ static void raster_line(Line line)
 		prev_pt = pt;
 	}
 
-	Point last_pt = { line.ox + line.dx, line.oy + line.dy };
+	Point last_pt = { line.beg.x + line.diff.x, line.beg.y + line.diff.y };
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
@@ -259,7 +256,7 @@ static int is_flat(Bezier bezier)
 {
 	Point mid = interp_points(bezier.beg, bezier.end);
 	double dist = manhattan_distance(bezier.ctrl, mid);
-	return dist <= 1.0;
+	return dist <= 0.5;
 }
 
 static void split_bezier(Bezier bezier, Bezier segments[2])
