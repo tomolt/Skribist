@@ -62,222 +62,18 @@ this term was inherited from Anti-Grain Geometry and cl-vectors.
 
 */
 
-/*
-
-You may notice that most computations right now are performed on floating-point numbers.
-Once the exact algorithmic implementation is in place and locked down, these will
-(hopefully) be converted to integer operations. Among other things, this would allow for
-more stability in the output and if bounded correctly can result in code that is much
-easier to parallelize with SIMD instructions.
-
-*/
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
-#include <math.h>
-#include <assert.h>
+
+#include "raster.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
-
-#define WIDTH 256
-#define HEIGHT 256
-
-// Please update glossary when messing with units.
-typedef struct {
-	double x, y;
-} Point;
-
-typedef struct {
-	Point beg;
-	Point diff;
-} Line;
-
-typedef struct {
-	int px;
-	int py;
-	int bx;
-	int by;
-	int ex;
-	int ey;
-} Dot;
-
-typedef struct {
-	Point beg;
-	Point ctrl;
-	Point end;
-} Bezier;
-
-static int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
-static uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 static Point cns_point(double x, double y)
 {
 	return (Point) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
-}
-
-static Line cns_line(Point beg, Point end)
-{
-	return (Line) { beg, (Point) { end.x - beg.x, end.y - beg.y } };
-}
-
-static Dot cns_dot(Point beg, Point end)
-{
-	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
-	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
-	int bx = round((beg.x - px) * 255.0);
-	int by = round((beg.y - py) * 255.0);
-	int ex = round((end.x - px) * 255.0);
-	int ey = round((end.y - py) * 255.0);
-	return (Dot) { px, py, bx, by, ex, ey };
-}
-
-static void raster_dot(Dot dot)
-{
-	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
-	int cover = abs(dot.ey - dot.by); // in the range 0 - 255
-	int total = winding * cover;
-	int width = 510 + abs(dot.ex - dot.bx) - 2 * max(dot.bx, dot.ex); // in the range 0 - 510
-	int value = total * width / 510;
-	olt_GLOBAL_raster[WIDTH * dot.py + dot.px] += value;
-	olt_GLOBAL_raster[WIDTH * dot.py + dot.px + 1] += total - value;
-}
-
-/*
-
-raster_line() is intended to take in a single line and pass it on as a sequence of dots.
-Its algorithm is actually fairly simple: It computes the exact intervals at
-which the line crosses a horizontal or vertical pixel edge respectively, and
-orders them based on the variable scalar in the line equation.
-
-*/
-
-/*
-
-At some point, raster_line() needs to be redone - there are *many* ways in which
-it could be drastically simplified still. Most importantly, it should track the
-integer pixel coordinates by itself without having to rely on the hacky cns_dot() thing.
-
-*/
-
-static void raster_line(Line line)
-{
-	double sx, sy; // step size along each axis
-	double xt, yt; // t of next vertical / horizontal intersection
-
-	if (line.diff.x != 0.0) {
-		sx = fabs(1.0 / line.diff.x);
-		if (line.diff.x > 0.0) {
-			xt = sx * (ceil(line.beg.x) - line.beg.x);
-		} else {
-			xt = sx * (line.beg.x - floor(line.beg.x));
-		}
-	} else {
-		sx = 0.0;
-		xt = 9.9;
-	}
-
-	if (line.diff.y != 0.0) {
-		sy = fabs(1.0 / line.diff.y);
-		if (line.diff.y > 0.0) {
-			yt = sy * (ceil(line.beg.y) - line.beg.y);
-		} else {
-			yt = sy * (line.beg.y - floor(line.beg.y));
-		}
-	} else {
-		sy = 0.0;
-		yt = 9.9;
-	}
-
-	double prev_t = 0.0;
-	Point prev_pt = line.beg, pt = prev_pt;
-
-	while (xt <= 1.0 || yt <= 1.0) {
-		double t;
-
-		if (xt < yt) {
-			t = xt;
-			xt += sx;
-		} else {
-			t = yt;
-			yt += sy;
-		}
-
-		if (t == prev_t) continue;
-
-		double td = t - prev_t;
-		pt.x += td * line.diff.x;
-		pt.y += td * line.diff.y;
-
-		raster_dot(cns_dot(prev_pt, pt));
-
-		prev_t = t;
-		prev_pt = pt;
-	}
-
-	Point last_pt = { line.beg.x + line.diff.x, line.beg.y + line.diff.y };
-	raster_dot(cns_dot(prev_pt, last_pt));
-}
-
-/*
-
-Once the points of bezier curves are represented in relative coordinates
-to each other, interp_points() and manhattan_distance() should just operate
-on lines for simplicity.
-
-*/
-
-static Point interp_bezier(Bezier bezier)
-{
-	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
-	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
-	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
-	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
-	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
-	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
-	return (Point) { x, y };
-}
-
-static Point interp_points(Point a, Point b)
-{
-	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
-	double y = (a.y + b.y) / 2.0;
-	return (Point) { x, y };
-}
-
-static double manhattan_distance(Point a, Point b)
-{
-	return fabs(a.x - b.x) + fabs(a.y - b.y);
-}
-
-static int is_flat(Bezier bezier)
-{
-	Point mid = interp_points(bezier.beg, bezier.end);
-	double dist = manhattan_distance(bezier.ctrl, mid);
-	return dist <= 0.5;
-}
-
-static void split_bezier(Bezier bezier, Bezier segments[2])
-{
-	Point pivot = interp_bezier(bezier);
-	Point ctrl0 = interp_points(bezier.beg, bezier.ctrl);
-	Point ctrl1 = interp_points(bezier.ctrl, bezier.end);
-	segments[0] = (Bezier) { bezier.beg, ctrl0, pivot };
-	segments[1] = (Bezier) { pivot, ctrl1, bezier.end };
-}
-
-static void raster_bezier(Bezier bezier)
-{
-	if (is_flat(bezier)) {
-		raster_line(cns_line(bezier.beg, bezier.end));
-	} else {
-		Bezier segments[2];
-		split_bezier(bezier, segments);
-		raster_bezier(segments[0]); // TODO don't overflow the stack
-		raster_bezier(segments[1]); // in pathological cases.
-	}
 }
 
 /*
@@ -338,13 +134,13 @@ int main(int argc, char const *argv[])
 	Point ctrl1 = cns_point(0.0, 0.5);
 	Point end1  = cns_point(0.25, 0.0);
 	Bezier bez1 = { beg1, ctrl1, end1 };
-	raster_bezier(bez1);
+	olt_INTERN_raster_bezier(bez1);
 
 	Point beg2  = cns_point(0.25, 0.0);
 	Point ctrl2 = cns_point(0.0, -0.5);
 	Point end2  = cns_point(-0.25, 0.0);
 	Bezier bez2 = { beg2, ctrl2, end2 };
-	raster_bezier(bez2);
+	olt_INTERN_raster_bezier(bez2);
 
 	gather();
 	write_bmp();
