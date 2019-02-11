@@ -39,20 +39,18 @@ Rational olt_INTERN_inv_rational(Rational rat)
 	return R(rat.denom, rat.numer);
 }
 
-static unsigned int greatest_common_divisor(Rational rat)
+static unsigned int greatest_common_divisor(unsigned int a, unsigned int b)
 {
-	unsigned int a = abs(rat.numer), b = rat.denom;
-	do {
-		if (a > b) a -= b;
-		else       b -= a;
-	} while (b != 0);
-	return a;
+	if (b == 0)
+		return a;
+	else
+		return greatest_common_divisor(b, a % b);
 }
 
 static Rational reduce(Rational rat)
 {
 	int ratSign = sign(rat.numer);
-	unsigned int div = greatest_common_divisor(absr(rat));
+	unsigned int div = greatest_common_divisor(abs(rat.numer), rat.denom);
 	return R(rat.numer * ratSign / div, rat.denom / div);
 }
 
@@ -72,10 +70,11 @@ Rational olt_INTERN_sub_rational(Rational a, Rational b)
 
 Rational olt_INTERN_mul_rational(Rational a, Rational b)
 {
-	// TODO think about integer overflow
-	int numer = a.numer * b.numer;
-	unsigned int denom = a.denom * b.denom;
-	return reduce(R(numer, denom));
+	Rational c = reduce(R(a.numer, b.denom));
+	Rational d = reduce(R(b.numer, a.denom));
+	int numer = c.numer * d.numer;
+	unsigned int denom = c.denom * d.denom;
+	return R(numer, denom);
 }
 
 Rational olt_INTERN_rational_floor(Rational rat)
