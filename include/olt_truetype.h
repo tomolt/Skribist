@@ -80,6 +80,8 @@ olt_Status olt_draw_nt_string(char const *string, olt_Font *font, void *image);
 olt_Status olt_draw_len_string(unsigned long length,
 	char const *string, olt_Font *font, void *image);
 
+// olt_Status olt_draw_char(unicode char ???, olt_Font *font, void *image);
+
 olt_Status olt_draw_glyph(olt_Font *font, void *image);
 
 olt_Status olt_parse_outline(olt_Glyph glyph, olt_Font *font, olt_Parse *parse);

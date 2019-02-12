@@ -62,3 +62,5 @@ extern int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 void olt_INTERN_raster_bezier(Bezier bezier);
+
+void olt_INTERN_gather(void);
