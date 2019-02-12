@@ -61,22 +61,52 @@ typedef struct {
 	int numCurves;
 } OutlineInfo;
 
+static unsigned int olt_GLOBAL_nodeState;
+static unsigned int olt_GLOBAL_numCurves;
+
+static void pre_scan_node(int onCurve)
+{
+	switch (olt_GLOBAL_nodeState) {
+	case 0:
+		assert(onCurve);
+		olt_GLOBAL_nodeState = 1;
+		break;
+	case 1:
+		if (onCurve) {
+			++olt_GLOBAL_numCurves;
+			break;
+		} else {
+			olt_GLOBAL_nodeState = 2;
+			break;
+		}
+	case 2:
+		if (onCurve) {
+			++olt_GLOBAL_numCurves;
+			olt_GLOBAL_nodeState = 1;
+			break;
+		} else {
+			++olt_GLOBAL_numCurves;
+			break;
+		}
+	default: assert(0);
+	}
+}
+
 static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	OutlineInfo info = { 0 };
-	// TODO FIXME compute numCurves
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
-	int numContours = ri16(sh->numContours);
-	assert(numContours >= 0);
-	info.numContours = numContours;
+	info.numContours = ri16(sh->numContours);
+	assert(info.numContours >= 0);
 	glyfCursor += 10;
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
-	int numPts = numContours == 0 ? 0 : (ru16(endPts[numContours - 1]) + 1);
+	int numPts = info.numContours == 0 ? 0
+		: (ru16(endPts[info.numContours - 1]) + 1);
 	info.endPts = endPts;
-	glyfCursor += 2 * numContours;
+	glyfCursor += 2 * info.numContours;
 
 	int instrLength = ri16(*(BYTES2 *) glyfCursor);
 	glyfCursor += 2 + instrLength;
@@ -92,15 +122,69 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 			xBytes += 1;
 		else if (!(flag & SGF_REUSE_PREV_X))
 			xBytes += 2;
+		unsigned int times = 1;
 		if (flag & SGF_REPEAT_FLAG)
-			curPt += *(glyfCursor++);
-		++curPt;
+			times += *(glyfCursor++);
+		for (unsigned int t = 0; t < times; ++t) {
+			pre_scan_node(flag & SGF_ON_CURVE_POINT);
+		}
+		curPt += times;
 	}
+
+	info.numCurves = olt_GLOBAL_numCurves;
 
 	info.xPtr = glyfCursor;
 	info.yPtr = glyfCursor + xBytes;
 
 	return info;
+}
+
+static Point olt_GLOBAL_queuedStart;
+static Point olt_GLOBAL_queuedPivot;
+static olt_Parse olt_GLOBAL_parse;
+
+static Point interp_points(Point a, Point b)
+{
+	return (Point) { (a.x + b.x) / 2, (a.y + b.y) / 2 };
+}
+
+static void parse_node(Point newNode, int onCurve)
+{
+	switch (olt_GLOBAL_nodeState) {
+	case 0:
+		assert(onCurve);
+		olt_GLOBAL_queuedStart = newNode;
+		olt_GLOBAL_nodeState = 1;
+		break;
+	case 1:
+		if (onCurve) {
+			Point pivot = interp_points(olt_GLOBAL_queuedStart, newNode);
+			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_queuedStart = newNode;
+			break;
+		} else {
+			olt_GLOBAL_queuedPivot = newNode;
+			olt_GLOBAL_nodeState = 2;
+			break;
+		}
+	case 2:
+		if (onCurve) {
+			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_queuedStart = newNode;
+			olt_GLOBAL_nodeState = 1;
+			break;
+		} else {
+			Point implicit = interp_points(olt_GLOBAL_queuedPivot, newNode);
+			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
+			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_queuedStart = implicit;
+			olt_GLOBAL_queuedPivot = newNode;
+			break;
+		}
+	default: assert(0);
+	}
 }
 
 static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
@@ -121,57 +205,10 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 	return co;
 }
 
-static int olt_GLOBAL_nodeState;
-static Node olt_GLOBAL_queuedStart;
-static Node olt_GLOBAL_queuedPivot;
-static olt_Parse olt_GLOBAL_parse;
-
-static Node interp_nodes(Node a, Node b)
-{
-	return (Node) { (a.x + b.x) / 2, (a.y + b.y) / 2 };
-}
-
-static void parse_node(Node newNode, int onCurve)
-{
-	switch (olt_GLOBAL_nodeState) {
-	case 0:
-		assert(onCurve);
-		olt_GLOBAL_queuedStart = newNode;
-		olt_GLOBAL_nodeState = 1;
-		break;
-	case 1:
-		if (onCurve) {
-			Node pivot = interp_nodes(olt_GLOBAL_queuedStart, newNode);
-			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
-			olt_GLOBAL_queuedStart = newNode;
-			break;
-		} else {
-			olt_GLOBAL_queuedPivot = newNode;
-			olt_GLOBAL_nodeState = 2;
-			break;
-		}
-	case 2:
-		if (onCurve) {
-			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
-			olt_GLOBAL_queuedStart = newNode;
-			olt_GLOBAL_nodeState = 1;
-			break;
-		} else {
-			Node implicit = interp_nodes(olt_GLOBAL_queuedPivot, newNode);
-			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
-			olt_GLOBAL_queuedStart = implicit;
-			olt_GLOBAL_queuedPivot = newNode;
-			break;
-		}
-	default: assert(0);
-	}
-}
-
 static void parse_outline(OutlineInfo info)
 {
+	olt_GLOBAL_nodeState = 0;
+
 	int pointIdx = 0;
 
 	for (int c = 0; c < info.numContours; ++c) {
@@ -181,17 +218,18 @@ static void parse_outline(OutlineInfo info)
 		while (pointIdx <= endPt) {
 			BYTES1 flags = *(info.flagsPtr++);
 
-			int times = 1;
+			unsigned int times = 1;
 			if (flags & SGF_REPEAT_FLAG)
 				times += *(info.flagsPtr++);
 
-			for (int t = 0; t < times; ++t) { // TODO reverse & don't check on first iteration
+			do {
 				long x = pull_coordinate(flags, &info.xPtr, prevX);
 				long y = pull_coordinate(flags >> 1, &info.yPtr, prevY);
-				parse_node((Node) { x, y }, flags & SGF_ON_CURVE_POINT);
+				parse_node((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
-			}
+				--times;
+			} while (times > 0);
 		}
 	}
 }
@@ -202,9 +240,13 @@ void olt_INTERN_parse_outline(void *addr)
 	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
 
+	printf("pre-scanned number of curves: %u\n", info.numCurves);
+	printf("parsed number of curves (must match up): %u\n", olt_GLOBAL_parse.numCurves);
+	assert(info.numCurves == olt_GLOBAL_parse.numCurves);
+
 	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i) {
 		Curve curve = olt_GLOBAL_parse.curves[i];
-		printf("(%ld, %ld) -> (%ld, %ld) -> (%ld, %ld)\n",
+		printf("(%f, %f) -> (%f, %f) -> (%f, %f)\n",
 			curve.beg.x, curve.beg.y, curve.ctrl.x, curve.ctrl.y, curve.end.x, curve.end.y);
 	}
 }

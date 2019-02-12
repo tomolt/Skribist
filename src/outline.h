@@ -31,15 +31,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define OLT_INTERN_PARSE_H
 
 typedef struct {
-	Rational x, y;
+	double x, y;
 } Point;
 
 typedef struct {
-	long x, y;
-} Node;
-
-typedef struct {
-	Node beg, ctrl, end;
+	Point beg, ctrl, end;
 } Curve;
 
 struct olt_Parse {

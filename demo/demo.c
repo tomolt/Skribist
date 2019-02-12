@@ -26,7 +26,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 
 #include "raster.h"
-#include "gather.h"
 
 #include <stdio.h>
 #include <stdlib.h>
