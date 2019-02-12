@@ -23,45 +23,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-/*
-
----- REFERENCES ----
-
-Sean Barrett, "How the stb_truetype Anti-Aliased Software Rasterizer v2 Works",
-	https://nothings.org/gamedev/rasterize/
-CL-VECTORS documentation, "9. The cl-aa algorithm",
-	http://projects.tuxee.net/cl-vectors/section-the-cl-aa-algorithm
-Ralph Levien, "Inside the fastest font renderer in the world",
-	https://medium.com/@raphlinus/inside-the-fastest-font-renderer-in-the-world-75ae5270c445
-Maxim Shemanarev, "Anti-Grain Geometry - Interpolation with Bezier Curves",
-	http://www.antigrain.com/research/bezier_interpolation/
-Maxim Shemanarev, "Anti-Grain Geometry - Gamma Correction",
-	http://www.antigrain.com/research/gamma_correction/
-Maxim Shemanarev, "Anti-Grain Geometry - Adaptive Subdivision of Bezier Curves",
-	http://www.antigrain.com/research/adaptive_bezier/
-Maxim Shemanarev, "Anti-Grain Geometry - Texts Rasterization Exposures",
-	http://www.antigrain.com/research/font_rasterization/
-
-*/
-
-/*
-
----- GLOSSARY ----
-
-I am of firm belief that adequate imaginative nomenclature is the single
-most important key to expressing and understanding complex concepts.
-
-"bezier": a quadratic bezier curve.
-"line": a simple, straight line.
-"dot": a short line that only spans one pixel (think 'dotted line').
-"point": a point in 2d space, where one unit equals one pixel.
-"cover": the height that a particular dot span within one pixel.
-this term was inherited from Anti-Grain Geometry and cl-vectors.
-"area": the signed area between a line and the left edge of the raster.
-this term was inherited from Anti-Grain Geometry and cl-vectors.
-
-*/
-
 #include <stdint.h>
 
 #include "raster.h"

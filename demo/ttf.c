@@ -23,23 +23,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-/*
-
----- REFERENCES ----
-
-V. Gaultney, M. Hosken, A. Ward, "An Introduction to TrueType Fonts: A look inside the TTF format",
-	https://scripts.sil.org/iws-chapter08
-Steve Hanov, "Let's read a Truetype font file from scratch",
-	http://stevehanov.ca/blog/index.php?id=143
-Apple Inc., "TrueType Reference Manual",
-	https://developer.apple.com/fonts/TrueType-Reference-Manual/
-Eric S. Raymond, "The Lost Art of Structure Packing",
-	http://www.catb.org/esr/structure-packing/
-MikroElektronika d.o.o., "Packed Structures - Make the Memory Feel Safe",
-	https://www.mikroe.com/blog/packed-structures-make-memory-feel-safe
-
-*/
-
 #include <stdint.h>
 
 #include "mapping.h"
