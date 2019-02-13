@@ -77,14 +77,14 @@ int main(int argc, char const *argv[])
 	Point beg1  = cns_point(-0.25, 0.0);
 	Point ctrl1 = cns_point(0.0, 0.5);
 	Point end1  = cns_point(0.25, 0.0);
-	Bezier bez1 = { beg1, ctrl1, end1 };
-	olt_INTERN_raster_bezier(bez1, transform);
+	Curve curve1 = { beg1, ctrl1, end1 };
+	olt_INTERN_raster_curve(curve1, transform);
 
 	Point beg2  = cns_point(0.25, 0.0);
 	Point ctrl2 = cns_point(0.0, -0.5);
 	Point end2  = cns_point(-0.25, 0.0);
-	Bezier bez2 = { beg2, ctrl2, end2 };
-	olt_INTERN_raster_bezier(bez2, transform);
+	Curve curve2 = { beg2, ctrl2, end2 };
+	olt_INTERN_raster_curve(curve2, transform);
 
 	olt_INTERN_gather();
 	write_bmp();

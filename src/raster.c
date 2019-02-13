@@ -140,14 +140,14 @@ static void raster_line(Line line)
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
-static Point interp_bezier(Bezier bezier)
+static Point interp_curve(Curve curve)
 {
-	double ax = bezier.beg.x - 2.0 * bezier.ctrl.x + bezier.end.x;
-	double ay = bezier.beg.y - 2.0 * bezier.ctrl.y + bezier.end.y;
-	double bx = 2.0 * (bezier.ctrl.x - bezier.beg.x);
-	double by = 2.0 * (bezier.ctrl.y - bezier.beg.y);
-	double x = (ax / 2.0 + bx) / 2.0 + bezier.beg.x;
-	double y = (ay / 2.0 + by) / 2.0 + bezier.beg.y;
+	double ax = curve.beg.x - 2.0 * curve.ctrl.x + curve.end.x;
+	double ay = curve.beg.y - 2.0 * curve.ctrl.y + curve.end.y;
+	double bx = 2.0 * (curve.ctrl.x - curve.beg.x);
+	double by = 2.0 * (curve.ctrl.y - curve.beg.y);
+	double x = (ax / 2.0 + bx) / 2.0 + curve.beg.x;
+	double y = (ay / 2.0 + by) / 2.0 + curve.beg.y;
 	return (Point) { x, y };
 }
 
@@ -163,20 +163,20 @@ static double manhattan_distance(Point a, Point b)
 	return fabs(a.x - b.x) + fabs(a.y - b.y);
 }
 
-static int is_flat(Bezier bezier)
+static int is_flat(Curve curve)
 {
-	Point mid = interp_points(bezier.beg, bezier.end);
-	double dist = manhattan_distance(bezier.ctrl, mid);
+	Point mid = interp_points(curve.beg, curve.end);
+	double dist = manhattan_distance(curve.ctrl, mid);
 	return dist <= 0.5;
 }
 
-static void split_bezier(Bezier bezier, Bezier segments[2])
+static void split_curve(Curve curve, Curve segments[2])
 {
-	Point pivot = interp_bezier(bezier);
-	Point ctrl0 = interp_points(bezier.beg, bezier.ctrl);
-	Point ctrl1 = interp_points(bezier.ctrl, bezier.end);
-	segments[0] = (Bezier) { bezier.beg, ctrl0, pivot };
-	segments[1] = (Bezier) { pivot, ctrl1, bezier.end };
+	Point pivot = interp_curve(curve);
+	Point ctrl0 = interp_points(curve.beg, curve.ctrl);
+	Point ctrl1 = interp_points(curve.ctrl, curve.end);
+	segments[0] = (Curve) { curve.beg, ctrl0, pivot };
+	segments[1] = (Curve) { pivot, ctrl1, curve.end };
 }
 
 static Point trf_point(Point point, Transform trf)
@@ -186,26 +186,26 @@ static Point trf_point(Point point, Transform trf)
 		point.y * trf.scale.y + trf.move.y };
 }
 
-static Bezier trf_curve(Bezier curve, Transform trf)
+static Curve trf_curve(Curve curve, Transform trf)
 {
-	return (Bezier) { trf_point(curve.beg, trf),
+	return (Curve) { trf_point(curve.beg, trf),
 		trf_point(curve.ctrl, trf), trf_point(curve.end, trf) };
 }
 
-static void raster_bezier(Bezier bezier, Transform transform)
+static void raster_curve(Curve curve, Transform transform)
 {
-	if (is_flat(bezier)) {
-		raster_line(cns_line(bezier.beg, bezier.end));
+	if (is_flat(curve)) {
+		raster_line(cns_line(curve.beg, curve.end));
 	} else {
-		Bezier segments[2];
-		split_bezier(bezier, segments);
-		raster_bezier(segments[0], transform); // TODO don't overflow the stack
-		raster_bezier(segments[1], transform); // in pathological cases.
+		Curve segments[2];
+		split_curve(curve, segments);
+		raster_curve(segments[0], transform); // TODO don't overflow the stack
+		raster_curve(segments[1], transform); // in pathological cases.
 	}
 }
 
-void olt_INTERN_raster_bezier(Bezier bezier, Transform transform)
+void olt_INTERN_raster_curve(Curve curve, Transform transform)
 {
-	Bezier rasterCurve = trf_curve(bezier, transform);
-	raster_bezier(rasterCurve, transform);
+	Curve rasterCurve = trf_curve(curve, transform);
+	raster_curve(rasterCurve, transform);
 }

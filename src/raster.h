@@ -35,7 +35,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Please update glossary when messing with units.
 typedef struct {
-	double x, y;
+	double x;
+	double y;
 } Point;
 
 typedef struct {
@@ -56,7 +57,7 @@ typedef struct {
 	Point beg;
 	Point ctrl;
 	Point end;
-} Bezier;
+} Curve;
 
 /*
 The transformation order goes: first scale, then move.
@@ -68,6 +69,6 @@ typedef struct {
 extern int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-void olt_INTERN_raster_bezier(Bezier bezier, Transform transform);
+void olt_INTERN_raster_curve(Curve curve, Transform transform);
 
 void olt_INTERN_gather(void);
