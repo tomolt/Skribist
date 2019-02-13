@@ -43,10 +43,6 @@ struct olt_Parse {
 	Curve *curves;
 };
 
-typedef struct {
-	Point move, scale;
-} Transform;
-
 typedef struct olt_Parse olt_Parse; // REDUNDANT
 
 void olt_INTERN_parse_outline(void *addr);

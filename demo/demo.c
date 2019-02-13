@@ -32,7 +32,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static Point cns_point(double x, double y)
 {
-	return (Point) { 0.5 + WIDTH / 2.0 + x * WIDTH, 0.5 + HEIGHT / 2.0 + y * HEIGHT };
+	return (Point) { x, y };
 }
 
 static void fmt_le_dword(char *buf, uint32_t v)
@@ -72,17 +72,19 @@ int main(int argc, char const *argv[])
 {
 	(void) argc, (void) argv;
 
+	Transform transform = { { WIDTH, HEIGHT }, { 0.5 + WIDTH / 2.0, 0.5 + HEIGHT / 2.0 } };
+
 	Point beg1  = cns_point(-0.25, 0.0);
 	Point ctrl1 = cns_point(0.0, 0.5);
 	Point end1  = cns_point(0.25, 0.0);
 	Bezier bez1 = { beg1, ctrl1, end1 };
-	olt_INTERN_raster_bezier(bez1);
+	olt_INTERN_raster_bezier(bez1, transform);
 
 	Point beg2  = cns_point(0.25, 0.0);
 	Point ctrl2 = cns_point(0.0, -0.5);
 	Point end2  = cns_point(-0.25, 0.0);
 	Bezier bez2 = { beg2, ctrl2, end2 };
-	olt_INTERN_raster_bezier(bez2);
+	olt_INTERN_raster_bezier(bez2, transform);
 
 	olt_INTERN_gather();
 	write_bmp();

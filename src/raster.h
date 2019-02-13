@@ -58,9 +58,16 @@ typedef struct {
 	Point end;
 } Bezier;
 
+/*
+The transformation order goes: first scale, then move.
+*/
+typedef struct {
+	Point scale, move;
+} Transform;
+
 extern int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-void olt_INTERN_raster_bezier(Bezier bezier);
+void olt_INTERN_raster_bezier(Bezier bezier, Transform transform);
 
 void olt_INTERN_gather(void);

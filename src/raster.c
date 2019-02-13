@@ -179,14 +179,33 @@ static void split_bezier(Bezier bezier, Bezier segments[2])
 	segments[1] = (Bezier) { pivot, ctrl1, bezier.end };
 }
 
-void olt_INTERN_raster_bezier(Bezier bezier)
+static Point trf_point(Point point, Transform trf)
+{
+	return (Point) {
+		point.x * trf.scale.x + trf.move.x,
+		point.y * trf.scale.y + trf.move.y };
+}
+
+static Bezier trf_curve(Bezier curve, Transform trf)
+{
+	return (Bezier) { trf_point(curve.beg, trf),
+		trf_point(curve.ctrl, trf), trf_point(curve.end, trf) };
+}
+
+static void raster_bezier(Bezier bezier, Transform transform)
 {
 	if (is_flat(bezier)) {
 		raster_line(cns_line(bezier.beg, bezier.end));
 	} else {
 		Bezier segments[2];
 		split_bezier(bezier, segments);
-		olt_INTERN_raster_bezier(segments[0]); // TODO don't overflow the stack
-		olt_INTERN_raster_bezier(segments[1]); // in pathological cases.
+		raster_bezier(segments[0], transform); // TODO don't overflow the stack
+		raster_bezier(segments[1], transform); // in pathological cases.
 	}
+}
+
+void olt_INTERN_raster_bezier(Bezier bezier, Transform transform)
+{
+	Bezier rasterCurve = trf_curve(bezier, transform);
+	raster_bezier(rasterCurve, transform);
 }
