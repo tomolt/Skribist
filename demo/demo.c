@@ -25,10 +25,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
+#include "mapping.h"
+#include "header.h"
+#include "outline.h"
 #include "raster.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 static void fmt_le_dword(char *buf, uint32_t v)
 {
@@ -67,6 +71,19 @@ int main(int argc, char const *argv[])
 {
 	(void) argc, (void) argv;
 
+	int ret;
+
+	unsigned char *rawData;
+	mapping_handle_t mapping;
+	ret = olt_INTERN_map_file("../demo/Ubuntu-C.ttf", (void **) &rawData, &mapping);
+	assert(ret == 0);
+
+	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
+	olt_INTERN_parse_head(rawData + offcache.head);
+	fprintf(stderr, "unitsPerEm: %d\n", olt_GLOBAL_unitsPerEm);
+
+	olt_INTERN_parse_outline(rawData + offcache.glyf);
+
 	Transform transform = { { WIDTH, HEIGHT }, { 0.5 + WIDTH / 2.0, 0.5 + HEIGHT / 2.0 } };
 
 	Point beg1  = { -0.25, 0.0 };
@@ -83,5 +100,9 @@ int main(int argc, char const *argv[])
 
 	olt_INTERN_gather();
 	write_bmp();
+
+	ret = olt_INTERN_unmap_file((void *) rawData, mapping);
+	assert(ret == 0);
+
 	return EXIT_SUCCESS;
 }

@@ -24,6 +24,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // depends on stdint.h
+// depends on outline.h
 
 #ifdef OLT_INTERN_RASTER_H
 #error multiple inclusion
@@ -32,32 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define WIDTH 256
 #define HEIGHT 256
-
-// Please update glossary when messing with units.
-typedef struct {
-	double x;
-	double y;
-} Point;
-
-typedef struct {
-	Point beg;
-	Point diff;
-} Line;
-
-typedef struct {
-	int px;
-	int py;
-	int bx;
-	int by;
-	int ex;
-	int ey;
-} Dot;
-
-typedef struct {
-	Point beg;
-	Point ctrl;
-	Point end;
-} Curve;
 
 /*
 The transformation order goes: first scale, then move.

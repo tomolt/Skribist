@@ -239,13 +239,13 @@ void olt_INTERN_parse_outline(void *addr)
 	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
 
-	printf("pre-scanned number of curves: %u\n", info.numCurves);
-	printf("parsed number of curves (must match up): %u\n", olt_GLOBAL_parse.numCurves);
+	fprintf(stderr, "pre-scanned number of curves: %u\n", info.numCurves);
+	fprintf(stderr, "parsed number of curves (must match up): %u\n", olt_GLOBAL_parse.numCurves);
 	assert(info.numCurves == olt_GLOBAL_parse.numCurves);
 
 	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i) {
 		Curve curve = olt_GLOBAL_parse.curves[i];
-		printf("(%f, %f) -> (%f, %f) -> (%f, %f)\n",
+		fprintf(stderr, "(%f, %f) -> (%f, %f) -> (%f, %f)\n",
 			curve.beg.x, curve.beg.y, curve.ctrl.x, curve.ctrl.y, curve.end.x, curve.end.y);
 	}
 }

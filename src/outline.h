@@ -30,12 +30,30 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define OLT_INTERN_PARSE_H
 
+// Please update glossary when messing with units.
 typedef struct {
-	double x, y;
+	double x;
+	double y;
 } Point;
 
 typedef struct {
-	Point beg, ctrl, end;
+	Point beg;
+	Point diff;
+} Line;
+
+typedef struct {
+	int px;
+	int py;
+	int bx;
+	int by;
+	int ex;
+	int ey;
+} Dot;
+
+typedef struct {
+	Point beg;
+	Point ctrl;
+	Point end;
 } Curve;
 
 struct olt_Parse {
