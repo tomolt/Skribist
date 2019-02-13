@@ -210,10 +210,9 @@ static void parse_outline(OutlineInfo info)
 	olt_GLOBAL_nodeState = 0;
 
 	int pointIdx = 0;
+	long prevX = 0, prevY = 0;
 
 	for (int c = 0; c < info.numContours; ++c) {
-		long prevX = 0, prevY = 0;
-
 		int endPt = ru16(info.endPts[c]);
 		while (pointIdx <= endPt) {
 			BYTES1 flags = *(info.flagsPtr++);
