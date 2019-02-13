@@ -30,11 +30,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 
-static Point cns_point(double x, double y)
-{
-	return (Point) { x, y };
-}
-
 static void fmt_le_dword(char *buf, uint32_t v)
 {
 	buf[0] = v & 0xFF;
@@ -74,15 +69,15 @@ int main(int argc, char const *argv[])
 
 	Transform transform = { { WIDTH, HEIGHT }, { 0.5 + WIDTH / 2.0, 0.5 + HEIGHT / 2.0 } };
 
-	Point beg1  = cns_point(-0.25, 0.0);
-	Point ctrl1 = cns_point(0.0, 0.5);
-	Point end1  = cns_point(0.25, 0.0);
+	Point beg1  = { -0.25, 0.0 };
+	Point ctrl1 = { 0.0, 0.5 };
+	Point end1  = { 0.25, 0.0 };
 	Curve curve1 = { beg1, ctrl1, end1 };
 	olt_INTERN_raster_curve(curve1, transform);
 
-	Point beg2  = cns_point(0.25, 0.0);
-	Point ctrl2 = cns_point(0.0, -0.5);
-	Point end2  = cns_point(-0.25, 0.0);
+	Point beg2  = { 0.25, 0.0 };
+	Point ctrl2 = { 0.0, -0.5 };
+	Point end2  = { -0.25, 0.0 };
 	Curve curve2 = { beg2, ctrl2, end2 };
 	olt_INTERN_raster_curve(curve2, transform);
 
