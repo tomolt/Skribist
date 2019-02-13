@@ -33,4 +33,7 @@ typedef struct {
 	unsigned long head;
 } OffsetCache;
 
+extern int olt_GLOBAL_unitsPerEm;
+
 OffsetCache olt_INTERN_cache_offsets(void *addr);
+void olt_INTERN_parse_head(void *addr);

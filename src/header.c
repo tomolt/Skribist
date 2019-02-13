@@ -62,3 +62,31 @@ OffsetCache olt_INTERN_cache_offsets(void *addr)
 	} while (cmp < 0 && idx < count && ++idx);
 	return cache;
 }
+
+typedef struct {
+	BYTES4 version;
+	BYTES4 fontRevision;
+	BYTES4 checkSumAdjustment;
+	BYTES4 magicNumber;
+	BYTES2 flags;
+	BYTES2 unitsPerEm;
+	BYTES8 created;
+	BYTES8 modified;
+	BYTES2 xMin;
+	BYTES2 yMin;
+	BYTES2 xMax;
+	BYTES2 yMax;
+	BYTES2 macStyle;
+	BYTES2 lowestRecPPEM;
+	BYTES2 fontDirectionHint;
+	BYTES2 indexToLocFormat;
+	BYTES2 glyphDataFormat;
+} headTbl;
+
+int olt_GLOBAL_unitsPerEm;
+
+void olt_INTERN_parse_head(void *addr)
+{
+	headTbl *head = (headTbl *) addr;
+	olt_GLOBAL_unitsPerEm = ru16(head->unitsPerEm);
+}
