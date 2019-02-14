@@ -105,8 +105,6 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 	glyfCursor += 10;
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
-	int numPts = info.numContours == 0 ? 0
-		: (ru16(endPts[info.numContours - 1]) + 1);
 	info.endPts = endPts;
 	glyfCursor += 2 * info.numContours;
 
@@ -116,21 +114,27 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 	info.flagsPtr = glyfCursor;
 
 	unsigned long xBytes = 0;
+	int pointIdx = 0;
 
-	int curPt = 0;
-	while (curPt < numPts) {
-		uint8_t flag = *(glyfCursor++);
-		if (flag & SGF_SHORT_X_COORD)
-			xBytes += 1;
-		else if (!(flag & SGF_REUSE_PREV_X))
-			xBytes += 2;
-		unsigned int times = 1;
-		if (flag & SGF_REPEAT_FLAG)
-			times += *(glyfCursor++);
-		for (unsigned int t = 0; t < times; ++t) {
-			pre_scan_node(flag & SGF_ON_CURVE_POINT);
+	for (int c = 0; c < info.numContours; ++c) {
+		int endPt = ru16(info.endPts[c]);
+
+		olt_GLOBAL_nodeState = 0;
+
+		while (pointIdx <= endPt) {
+			uint8_t flags = *(glyfCursor++);
+			if (flags & SGF_SHORT_X_COORD)
+				xBytes += 1;
+			else if (!(flags & SGF_REUSE_PREV_X))
+				xBytes += 2;
+			unsigned int times = 1;
+			if (flags & SGF_REPEAT_FLAG)
+				times += *(glyfCursor++);
+			for (unsigned int t = 0; t < times; ++t) {
+				pre_scan_node(flags & SGF_ON_CURVE_POINT);
+			}
+			pointIdx += times;
 		}
-		curPt += times;
 	}
 
 	info.numCurves = olt_GLOBAL_numCurves;
@@ -208,13 +212,14 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 
 static void parse_outline(OutlineInfo info)
 {
-	olt_GLOBAL_nodeState = 0;
-
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
 
 	for (int c = 0; c < info.numContours; ++c) {
 		int endPt = ru16(info.endPts[c]);
+
+		olt_GLOBAL_nodeState = 0;
+
 		while (pointIdx <= endPt) {
 			BYTES1 flags = *(info.flagsPtr++);
 
