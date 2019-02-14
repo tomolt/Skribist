@@ -29,7 +29,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "outline.h"
 #include "reading.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -245,13 +244,5 @@ void olt_INTERN_parse_outline(void *addr)
 	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
 
-	fprintf(stderr, "pre-scanned number of curves: %u\n", info.numCurves);
-	fprintf(stderr, "parsed number of curves (must match up): %u\n", olt_GLOBAL_parse.numCurves);
 	assert(info.numCurves == olt_GLOBAL_parse.numCurves);
-
-	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i) {
-		Curve curve = olt_GLOBAL_parse.curves[i];
-		fprintf(stderr, "(%f, %f) -> (%f, %f) -> (%f, %f)\n",
-			curve.beg.x, curve.beg.y, curve.ctrl.x, curve.ctrl.y, curve.end.x, curve.end.y);
-	}
 }
