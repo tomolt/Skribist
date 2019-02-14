@@ -43,6 +43,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SGF_REUSE_PREV_Y   0x20
 #define SGF_OVERLAP_SIMPLE 0x40
 
+/*
+This header is shared by the simple
+and compound glyph outlines.
+*/
 typedef struct {
 	BYTES2 numContours;
 	BYTES2 xMin;
@@ -51,6 +55,10 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
+/*
+All information resulting from the
+pre-scan pass.
+*/
 typedef struct {
 	int numContours;
 	BYTES2 *endPts;
@@ -64,6 +72,13 @@ olt_Parse olt_GLOBAL_parse;
 
 static unsigned int olt_GLOBAL_nodeState;
 static unsigned int olt_GLOBAL_numCurves;
+
+/*
+
+By the design of TrueType it's not possible to parse an outline in a single pass.
+So instead, we run a 'pre-scan' before the actual parsing stage.
+
+*/
 
 static void pre_scan_node(int onCurve)
 {
@@ -93,7 +108,7 @@ static void pre_scan_node(int onCurve)
 	}
 }
 
-static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
+static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	OutlineInfo info = { 0 };
@@ -144,15 +159,24 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 	return info;
 }
 
-static Point olt_GLOBAL_queuedStart;
-static Point olt_GLOBAL_queuedPivot;
-
 static Point interp_points(Point a, Point b)
 {
 	return (Point) { (a.x + b.x) / 2, (a.y + b.y) / 2 };
 }
 
-static void parse_node(Point newNode, int onCurve)
+/*
+
+When we find a new point, we can't generally output a new curve for it right away.
+Instead, we have to buffer them up until we can construct a valid curve.
+Because of the complicated packing scheme used in TrueType, this is somewhat
+complicated. push_point() implements this using a simple finite state machine.
+
+*/
+
+static Point olt_GLOBAL_queuedStart;
+static Point olt_GLOBAL_queuedPivot;
+
+static void push_point(Point newNode, int onCurve)
 {
 	switch (olt_GLOBAL_nodeState) {
 	case 0:
@@ -191,6 +215,15 @@ static void parse_node(Point newNode, int onCurve)
 	}
 }
 
+/*
+
+Pulls the next coordinate from the memory pointed to by ptr, and
+interprets it according to flags. Technically, pull_coordinate()
+is only implemented for the x coordinate, however by right
+shifting the relevant flags by 1 we can also use this function for
+y coordinates.
+
+*/
 static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 {
 	long co = prev;
@@ -229,7 +262,7 @@ static void parse_outline(OutlineInfo info)
 			do {
 				long x = pull_coordinate(flags, &info.xPtr, prevX);
 				long y = pull_coordinate(flags >> 1, &info.yPtr, prevY);
-				parse_node((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
+				push_point((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;
@@ -240,7 +273,7 @@ static void parse_outline(OutlineInfo info)
 
 void olt_INTERN_parse_outline(void *addr)
 {
-	OutlineInfo info = gather_outline_info(addr);
+	OutlineInfo info = pre_scan_outline(addr);
 	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
 
