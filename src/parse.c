@@ -61,6 +61,8 @@ typedef struct {
 	int numCurves;
 } OutlineInfo;
 
+olt_Parse olt_GLOBAL_parse;
+
 static unsigned int olt_GLOBAL_nodeState;
 static unsigned int olt_GLOBAL_numCurves;
 
@@ -141,7 +143,6 @@ static OutlineInfo gather_outline_info(BYTES1 *glyfEntry)
 
 static Point olt_GLOBAL_queuedStart;
 static Point olt_GLOBAL_queuedPivot;
-static olt_Parse olt_GLOBAL_parse;
 
 static Point interp_points(Point a, Point b)
 {

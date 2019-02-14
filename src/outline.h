@@ -63,4 +63,6 @@ struct olt_Parse {
 
 typedef struct olt_Parse olt_Parse; // REDUNDANT
 
+extern olt_Parse olt_GLOBAL_parse;
+
 void olt_INTERN_parse_outline(void *addr);
