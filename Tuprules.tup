@@ -1,18 +1,18 @@
 CC := clang
 CFLAGS := -pedantic -Wall -Wextra
 LDFLAGS := -g
-LDLIBS := -lm
 
 ifeq (@(TUP_PLATFORM),win32)
 LIBRARY_TARGET := olt_truetype.lib
 DEMO_TARGET := demo.exe
-TTF_TARGET := ttf.exe
+LDLIBS :=
+!ar = |> lib /NOLOGO /OUT:%o %f |>
 else
 LIBRARY_TARGET := libolt_truetype.a
 DEMO_TARGET := demo
-TTF_TARGET := ttf
+LDLIBS := -lm
+!ar = |> ar -rcs %o %f |>
 endif
 
 !cc = |> $(CC) -c $(CFLAGS) $(LDFLAGS) %f -o %o -I../../src |> %B.o
 !ld = |> $(CC) $(LDFLAGS) %f -o %o $(LDLIBS) |>
-!ar = |> ar -rcs %o %f |>
