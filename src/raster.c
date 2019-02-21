@@ -6,8 +6,14 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 #define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
 int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];

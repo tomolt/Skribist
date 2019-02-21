@@ -5,8 +5,14 @@
 
 #include <stdlib.h>
 
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 #define clamp(v, l, h) min(max((v), (l)), (h))
 
 /*

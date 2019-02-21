@@ -42,7 +42,7 @@ static void fmt_le_dword(char *buf, uint32_t v)
 	buf[3] = v >> 24 & 0xFF;
 }
 
-static void write_bmp(void)
+static void write_bmp(FILE *outFile)
 {
 	char hdr[54] = { 0 };
 	// Header
@@ -56,13 +56,13 @@ static void write_bmp(void)
 	fmt_le_dword(&hdr[22], HEIGHT);
 	hdr[26] = 1; // color planes
 	hdr[28] = 24; // bpp
-	fwrite(hdr, 1, 54, stdout);
+	fwrite(hdr, 1, 54, outFile);
 	for (int y = 0; y < HEIGHT; ++y) {
 		for (int x = 0; x < WIDTH; ++x) {
 			unsigned char c = olt_GLOBAL_image[WIDTH * y + x];
-			fputc(c, stdout); // r
-			fputc(c, stdout); // g
-			fputc(c, stdout); // b
+			fputc(c, outFile); // r
+			fputc(c, outFile); // g
+			fputc(c, outFile); // b
 		}
 	}
 }
@@ -78,6 +78,8 @@ int main(int argc, char const *argv[])
 	ret = olt_INTERN_map_file("../demo/Ubuntu-C.ttf", (void **) &rawData, &mapping);
 	assert(ret == 0);
 
+	FILE *outFile = fopen("demo.bmp", "wb");
+
 	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
 	olt_INTERN_parse_head(rawData + offcache.head);
 	fprintf(stderr, "unitsPerEm: %d\n", olt_GLOBAL_unitsPerEm);
@@ -90,7 +92,9 @@ int main(int argc, char const *argv[])
 		olt_INTERN_raster_curve(olt_GLOBAL_parse.curves[i], transform);
 
 	olt_INTERN_gather();
-	write_bmp();
+	write_bmp(outFile);
+
+	fclose(outFile);
 
 	ret = olt_INTERN_unmap_file((void *) rawData, mapping);
 	assert(ret == 0);
