@@ -1,6 +1,5 @@
 #include <stdint.h>
 
-#include "rational.h"
 #include "outline.h"
 #include "reading.h"
 
