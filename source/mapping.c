@@ -57,11 +57,14 @@ fail:
 
 int olt_INTERN_unmap_file(void *addr, mapping_handle_t mapping)
 {
-	return addr == MAP_FAILED ? -1 : munmap(addr, mapping);
+	off_t mappingHandle = (off_t) mapping;
+	return addr == MAP_FAILED ? -1 : munmap(addr, mappingHandle);
 }
 
 int olt_INTERN_map_file(char const *filename, void **addr, mapping_handle_t *mapping)
 {
+	off_t *mappingHandle = (off_t *) mapping;
+
 	int ret;
 
 	*addr = MAP_FAILED;
@@ -73,7 +76,7 @@ int olt_INTERN_map_file(char const *filename, void **addr, mapping_handle_t *map
 	ret = fstat(descr, &stat);
 	if (ret != 0) goto fail;
 	if (stat.st_size > LONG_MAX) goto fail;
-	*mapping = stat.st_size;
+	*mappingHandle = stat.st_size;
 
 	*addr = mmap(NULL, stat.st_size, PROT_READ, MAP_PRIVATE, descr, 0);
 	if (*addr == MAP_FAILED) goto fail;

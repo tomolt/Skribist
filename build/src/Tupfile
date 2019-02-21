@@ -1,4 +1,0 @@
-include_rules
-
-.gitignore
-: foreach ../../src/*.c |> !cc |>

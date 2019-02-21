@@ -1,5 +1,0 @@
-include_rules
-
-.gitignore
-: ../build/src/*.o |> !ar |> $(LIBRARY_TARGET)
-: ../build/demo/demo.o $(LIBRARY_TARGET) |> !ld |> $(DEMO_TARGET)
