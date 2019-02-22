@@ -24,6 +24,18 @@ static Line cns_line(Point beg, Point end)
 	return (Line) { beg, (Point) { end.x - beg.x, end.y - beg.y } };
 }
 
+/*
+
+cns_dot() is completely flawed right now and has to be redone.
+floating point inaccuracies can lead to wrong pixel coordinates
+if computed naively, so we add a small epsilon before rounding down.
+this however means that beg.x - px could become negative, which is
+something we *really* don't want. However, we also can't just round
+to nearest instead of down, because only one of the coordinates will
+be pixel-aligned in the common case.
+
+*/
+
 static Dot cns_dot(Point beg, Point end)
 {
 	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
@@ -52,14 +64,6 @@ raster_line() is intended to take in a single line and pass it on as a sequence 
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
-
-*/
-
-/*
-
-At some point, raster_line() needs to be redone - there are *many* ways in which
-it could be drastically simplified still. Most importantly, it should track the
-integer pixel coordinates by itself without having to rely on the hacky cns_dot() thing.
 
 */
 
