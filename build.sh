@@ -7,5 +7,4 @@ do_build() {
 	done
 	ar -rcs libSkribist.a build/*.o
 }
-
-do_build
+time do_build
