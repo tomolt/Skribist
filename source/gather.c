@@ -1,10 +1,3 @@
-#include <stdint.h>
-
-#include "outline.h"
-#include "raster.h"
-
-#include <stdlib.h>
-
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif

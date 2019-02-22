@@ -1,10 +1,3 @@
-#include "header.h"
-
-#include <stdint.h>
-#include "reading.h"
-
-#include <string.h>
-
 typedef struct {
 	char tag[4];
 	BYTES4 checksum;

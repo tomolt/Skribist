@@ -4,11 +4,8 @@ CC=gcc
 CFLAGS="-g -std=gnu99 -pedantic -Wall -Wextra"
 
 build_Skribist() {
-	mkdir -p build
-	for SRC in source/*.c; do
-		$CC $CFLAGS -c $SRC -o build/$(basename $SRC .c).o
-	done
-	ar -rcs libSkribist.a build/*.o
+	$CC $CFLAGS -c source/Skribist.c -o Skribist.o
+	ar -rcs libSkribist.a Skribist.o
 }
 
 build_examples() {
