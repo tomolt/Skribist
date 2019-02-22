@@ -119,17 +119,6 @@ static void raster_line(Line line)
 	raster_dot(cns_dot(prev_pt, last_pt));
 }
 
-static Point interp_curve(Curve curve)
-{
-	double ax = curve.beg.x - 2.0 * curve.ctrl.x + curve.end.x;
-	double ay = curve.beg.y - 2.0 * curve.ctrl.y + curve.end.y;
-	double bx = 2.0 * (curve.ctrl.x - curve.beg.x);
-	double by = 2.0 * (curve.ctrl.y - curve.beg.y);
-	double x = (ax / 2.0 + bx) / 2.0 + curve.beg.x;
-	double y = (ay / 2.0 + by) / 2.0 + curve.beg.y;
-	return (Point) { x, y };
-}
-
 static double manhattan_distance(Point a, Point b)
 {
 	return fabs(a.x - b.x) + fabs(a.y - b.y);
@@ -144,9 +133,9 @@ static int is_flat(Curve curve)
 
 static void split_curve(Curve curve, Curve segments[2])
 {
-	Point pivot = interp_curve(curve);
 	Point ctrl0 = interp_points(curve.beg, curve.ctrl);
 	Point ctrl1 = interp_points(curve.ctrl, curve.end);
+	Point pivot = interp_points(ctrl0, ctrl1);
 	segments[0] = (Curve) { curve.beg, ctrl0, pivot };
 	segments[1] = (Curve) { pivot, ctrl1, curve.end };
 }
