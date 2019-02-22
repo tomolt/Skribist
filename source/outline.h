@@ -13,17 +13,8 @@ typedef struct {
 
 typedef struct {
 	Point beg;
-	Point diff;
+	Point end;
 } Line;
-
-typedef struct {
-	int px;
-	int py;
-	int bx;
-	int by;
-	int ex;
-	int ey;
-} Dot;
 
 typedef struct {
 	Point beg;

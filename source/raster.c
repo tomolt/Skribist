@@ -11,24 +11,19 @@
 RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-static Line cns_line(Point beg, Point end)
-{
-	return (Line) { beg, (Point) { end.x - beg.x, end.y - beg.y } };
-}
-
 /*
 
-cns_dot() is completely flawed right now and has to be redone.
-floating point inaccuracies can lead to wrong pixel coordinates
+raster_dot() is completely flawed right now and has to be redone.
+Floating point inaccuracies can lead to wrong pixel coordinates
 if computed naively, so we add a small epsilon before rounding down.
-this however means that beg.x - px could become negative, which is
+This however means that beg.x - px could become negative, which is
 something we *really* don't want. However, we also can't just round
 to nearest instead of down, because only one of the coordinates will
 be pixel-aligned in the common case.
 
 */
 
-static Dot cns_dot(Point beg, Point end)
+static void raster_dot(Point beg, Point end)
 {
 	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
 	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
@@ -36,19 +31,15 @@ static Dot cns_dot(Point beg, Point end)
 	int by = round((beg.y - py) * 127.0);
 	int ex = round((end.x - px) * 127.0);
 	int ey = round((end.y - py) * 127.0);
-	return (Dot) { px, py, bx, by, ex, ey };
-}
 
-static void raster_dot(Dot dot)
-{
-	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * dot.py + dot.px];
+	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * py + px];
 
-	int winding = sign(dot.ey - dot.by);
-	int cover = abs(dot.ey - dot.by); // in the range 0 - 127
+	int winding = sign(ey - by);
+	int cover = abs(ey - by); // in the range 0 - 127
 	cell->windingAndCover += winding * cover; // in the range -127 - 127
 
 	// TODO clamp
-	cell->area += abs(dot.ex - dot.bx) + 254 - 2 * max(dot.ex, dot.bx); // in the range 0 - 254
+	cell->area += abs(ex - bx) + 254 - 2 * max(ex, bx); // in the range 0 - 254
 }
 
 /*
@@ -62,12 +53,14 @@ orders them based on the variable scalar in the line equation.
 
 static void raster_line(Line line)
 {
+	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
+
 	double sx, sy; // step size along each axis
 	double xt, yt; // t of next vertical / horizontal intersection
 
-	if (line.diff.x != 0.0) {
-		sx = fabs(1.0 / line.diff.x);
-		if (line.diff.x > 0.0) {
+	if (diff.x != 0.0) {
+		sx = fabs(1.0 / diff.x);
+		if (diff.x > 0.0) {
 			xt = sx * (ceil(line.beg.x) - line.beg.x);
 		} else {
 			xt = sx * (line.beg.x - floor(line.beg.x));
@@ -77,9 +70,9 @@ static void raster_line(Line line)
 		xt = 9.9;
 	}
 
-	if (line.diff.y != 0.0) {
-		sy = fabs(1.0 / line.diff.y);
-		if (line.diff.y > 0.0) {
+	if (diff.y != 0.0) {
+		sy = fabs(1.0 / diff.y);
+		if (diff.y > 0.0) {
 			yt = sy * (ceil(line.beg.y) - line.beg.y);
 		} else {
 			yt = sy * (line.beg.y - floor(line.beg.y));
@@ -105,18 +98,16 @@ static void raster_line(Line line)
 
 		if (t == prev_t) continue;
 
-		double td = t - prev_t;
-		pt.x += td * line.diff.x;
-		pt.y += td * line.diff.y;
+		pt.x = line.beg.x + t * diff.x;
+		pt.y = line.beg.y + t * diff.y;
 
-		raster_dot(cns_dot(prev_pt, pt));
+		raster_dot(prev_pt, pt);
 
 		prev_t = t;
 		prev_pt = pt;
 	}
 
-	Point last_pt = { line.beg.x + line.diff.x, line.beg.y + line.diff.y };
-	raster_dot(cns_dot(prev_pt, last_pt));
+	raster_dot(prev_pt, line.end);
 }
 
 static double manhattan_distance(Point a, Point b)
@@ -156,7 +147,7 @@ static Curve trf_curve(Curve curve, Transform trf)
 static void raster_curve(Curve curve, Transform transform)
 {
 	if (is_flat(curve)) {
-		raster_line(cns_line(curve.beg, curve.end));
+		raster_line((Line) { curve.beg, curve.end });
 	} else {
 		Curve segments[2];
 		split_curve(curve, segments);
