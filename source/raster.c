@@ -16,7 +16,7 @@
 
 #define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
-int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
+RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 static Line cns_line(Point beg, Point end)
@@ -49,13 +49,13 @@ static Dot cns_dot(Point beg, Point end)
 
 static void raster_dot(Dot dot)
 {
+	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * dot.py + dot.px];
+
 	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
 	int cover = abs(dot.ey - dot.by); // in the range 0 - 255
-	int total = winding * cover;
-	int width = 510 + abs(dot.ex - dot.bx) - 2 * max(dot.bx, dot.ex); // in the range 0 - 510
-	int value = total * width / 510;
-	olt_GLOBAL_raster[WIDTH * dot.py + dot.px] += value;
-	olt_GLOBAL_raster[WIDTH * dot.py + dot.px + 1] += total - value;
+	cell->windingAndCover += winding * cover;
+
+	cell->area += 255 + abs(dot.ex - dot.bx) / 2 - max(dot.bx, dot.ex); // in the range 0 - 255
 }
 
 /*

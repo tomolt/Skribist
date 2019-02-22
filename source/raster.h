@@ -16,7 +16,12 @@ typedef struct {
 	Point scale, move;
 } Transform;
 
-extern int16_t olt_GLOBAL_raster[WIDTH * HEIGHT];
+typedef struct {
+	int8_t windingAndCover;
+	uint8_t area;
+} RasterCell;
+
+extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 void olt_INTERN_raster_curve(Curve curve, Transform transform);
