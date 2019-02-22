@@ -24,9 +24,9 @@ void olt_INTERN_gather(void)
 			int i = WIDTH * r + c;
 			RasterCell *cell = &olt_GLOBAL_raster[i];
 			int windingAndCover = cell->windingAndCover, area = cell->area;
-			int value = acc + windingAndCover * area / 254;
-			int normValue = value * 255 / 127;
-			olt_GLOBAL_image[i] = min(abs(normValue), 255);
+			int value = acc + windingAndCover * area / 254; // in the range -127 - 127
+			int normValue = value * 255 / 127; // TODO we lose a lot of precision here.
+			olt_GLOBAL_image[i] = abs(normValue); // TODO use standardized winding direction to obviate the need for this abs()
 			acc += windingAndCover;
 		}
 	}
