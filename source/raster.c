@@ -32,10 +32,10 @@ static Dot cns_dot(Point beg, Point end)
 {
 	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
 	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
-	int bx = round((beg.x - px) * 255.0);
-	int by = round((beg.y - py) * 255.0);
-	int ex = round((end.x - px) * 255.0);
-	int ey = round((end.y - py) * 255.0);
+	int bx = round((beg.x - px) * 127.0);
+	int by = round((beg.y - py) * 127.0);
+	int ex = round((end.x - px) * 127.0);
+	int ey = round((end.y - py) * 127.0);
 	return (Dot) { px, py, bx, by, ex, ey };
 }
 
@@ -43,11 +43,12 @@ static void raster_dot(Dot dot)
 {
 	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * dot.py + dot.px];
 
-	int winding = sign(dot.ey - dot.by); // FIXME more robust way?
-	int cover = abs(dot.ey - dot.by); // in the range 0 - 255
-	cell->windingAndCover += winding * cover;
+	int winding = sign(dot.ey - dot.by);
+	int cover = abs(dot.ey - dot.by); // in the range 0 - 127
+	cell->windingAndCover += winding * cover; // in the range -127 - 127
 
-	cell->area += 255 + abs(dot.ex - dot.bx) / 2 - max(dot.bx, dot.ex); // in the range 0 - 255
+	// TODO clamp
+	cell->area += abs(dot.ex - dot.bx) + 254 - 2 * max(dot.ex, dot.bx); // in the range 0 - 254
 }
 
 /*

@@ -17,8 +17,8 @@ typedef struct {
 } Transform;
 
 typedef struct {
-	int8_t windingAndCover;
-	uint8_t area;
+	int8_t windingAndCover; // in the range -127 - 127
+	uint8_t area; // in the range 0 - 254
 } RasterCell;
 
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
