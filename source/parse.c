@@ -1,11 +1,3 @@
-#include <stdint.h>
-
-#include "outline.h"
-#include "reading.h"
-
-#include <stdlib.h>
-#include <assert.h>
-
 // Simple glyph flags
 #define SGF_ON_CURVE_POINT 0x01
 #define SGF_SHORT_X_COORD  0x02
@@ -135,7 +127,9 @@ static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 
 static Point interp_points(Point a, Point b)
 {
-	return (Point) { (a.x + b.x) / 2, (a.y + b.y) / 2 };
+	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
+	double y = (a.y + b.y) / 2.0;
+	return (Point) { x, y };
 }
 
 /*

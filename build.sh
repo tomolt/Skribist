@@ -1,10 +1,23 @@
 #!/bin/sh
 
-do_build() {
-	mkdir -p build
-	for SRC in source/*.c; do
-		clang -c -g -std=gnu99 -pedantic -Wall -Wextra $SRC -o build/$(basename $SRC .c).o
-	done
-	ar -rcs libSkribist.a build/*.o
+ENV_ERR="You have to set up a build environment first."
+
+[ -z $CC ] && { echo $ENV_ERR; exit 1; }
+
+CFLAGS="$CFLAGS -std=gnu99 -pedantic -Wall -Wextra"
+
+build_Skribist() {
+	$CC $CFLAGS -c source/Skribist.c -o Skribist.o
+	ar -rcs libSkribist.a Skribist.o
 }
-time do_build
+
+build_examples() {
+	$CC $CFLAGS examples/bmp/bmp_example.c -o examples/bmp/bmp_example -Isource libSkribist.a -lm
+}
+
+build_all() {
+	build_Skribist
+	build_examples
+}
+
+time build_all

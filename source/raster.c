@@ -1,11 +1,3 @@
-#include <stdint.h>
-
-#include "outline.h"
-#include "raster.h"
-
-#include <stdlib.h>
-#include <math.h>
-
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -134,13 +126,6 @@ static Point interp_curve(Curve curve)
 	double by = 2.0 * (curve.ctrl.y - curve.beg.y);
 	double x = (ax / 2.0 + bx) / 2.0 + curve.beg.x;
 	double y = (ay / 2.0 + by) / 2.0 + curve.beg.y;
-	return (Point) { x, y };
-}
-
-static Point interp_points(Point a, Point b)
-{
-	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
-	double y = (a.y + b.y) / 2.0;
 	return (Point) { x, y };
 }
 

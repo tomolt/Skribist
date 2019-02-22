@@ -25,7 +25,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
-#include "mapping.h"
 #include "header.h"
 #include "outline.h"
 #include "raster.h"
@@ -33,6 +32,31 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+static int read_file(char const *filename, void **addr)
+{
+	FILE *file = fopen(filename, "rw");
+	if (file == NULL) {
+		return -1;
+	}
+	fseek(file, 0, SEEK_END);
+	long length = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	unsigned char *data = malloc(length);
+	if (data == NULL) {
+		fclose(file);
+		return -1;
+	}
+	long count = fread(data, 1, length, file);
+	if (count != length) {
+		free(data);
+		fclose(file);
+		return -1;
+	}
+	fclose(file);
+	*addr = data;
+	return 0;
+}
 
 static void fmt_le_dword(char *buf, uint32_t v)
 {
@@ -74,11 +98,11 @@ int main(int argc, char const *argv[])
 	int ret;
 
 	unsigned char *rawData;
-	mapping_handle_t mapping;
-	ret = olt_INTERN_map_file("../demo/Ubuntu-C.ttf", (void **) &rawData, &mapping);
+	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
 	assert(ret == 0);
 
 	FILE *outFile = fopen("demo.bmp", "wb");
+	assert(outFile != NULL);
 
 	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
 	olt_INTERN_parse_head(rawData + offcache.head);
@@ -96,8 +120,7 @@ int main(int argc, char const *argv[])
 
 	fclose(outFile);
 
-	ret = olt_INTERN_unmap_file((void *) rawData, mapping);
-	assert(ret == 0);
+	free(rawData);
 
 	return EXIT_SUCCESS;
 }

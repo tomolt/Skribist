@@ -1,2 +1,3 @@
-build/
+Skribist.o
 libSkribist.a
+examples/bmp/bmp_example

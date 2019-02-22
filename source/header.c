@@ -1,9 +1,11 @@
-#include "header.h"
-
-#include <stdint.h>
-#include "reading.h"
-
-#include <string.h>
+static int SKR_strncmp(char const *a, char const *b, long n)
+{
+	for (long i = 0; i < n; ++i) {
+		if (a[i] != b[i])
+			return a[i] - b[i];
+	}
+	return 0;
+}
 
 typedef struct {
 	char tag[4];
@@ -28,11 +30,11 @@ OffsetCache olt_INTERN_cache_offsets(void *addr)
 	int count = ru16(offt->numTables);
 	int idx = 0, cmp;
 	do {
-		cmp = strncmp(offt->entries[idx].tag, "glyf", 4);
+		cmp = SKR_strncmp(offt->entries[idx].tag, "glyf", 4);
 		if (!cmp) cache.glyf = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	do {
-		cmp = strncmp(offt->entries[idx].tag, "head", 4);
+		cmp = SKR_strncmp(offt->entries[idx].tag, "head", 4);
 		if (!cmp) cache.head = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	return cache;
