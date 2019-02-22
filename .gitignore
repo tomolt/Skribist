@@ -1,2 +1,3 @@
 build/
 libSkribist.a
+examples/bmp/bmp_example

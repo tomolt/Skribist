@@ -1,10 +1,23 @@
 #!/bin/sh
 
-do_build() {
+CC=gcc
+CFLAGS="-g -std=gnu99 -pedantic -Wall -Wextra"
+
+build_Skribist() {
 	mkdir -p build
 	for SRC in source/*.c; do
-		clang -c -g -std=gnu99 -pedantic -Wall -Wextra $SRC -o build/$(basename $SRC .c).o
+		$CC $CFLAGS -c $SRC -o build/$(basename $SRC .c).o
 	done
 	ar -rcs libSkribist.a build/*.o
 }
-time do_build
+
+build_examples() {
+	$CC $CFLAGS examples/bmp/bmp_example.c -o examples/bmp/bmp_example -Isource libSkribist.a -lm
+}
+
+build_all() {
+	build_Skribist
+	build_examples
+}
+
+time build_all
