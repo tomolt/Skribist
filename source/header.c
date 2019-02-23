@@ -37,6 +37,14 @@ OffsetCache olt_INTERN_cache_offsets(void *addr)
 		cmp = SKR_strncmp(offt->entries[idx].tag, "head", 4);
 		if (!cmp) cache.head = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
+	do {
+		cmp = SKR_strncmp(offt->entries[idx].tag, "loca", 4);
+		if (!cmp) cache.loca = ru32(offt->entries[idx].offset);
+	} while (cmp < 0 && idx < count && ++idx);
+	do {
+		cmp = SKR_strncmp(offt->entries[idx].tag, "maxp", 4);
+		if (!cmp) cache.maxp = ru32(offt->entries[idx].offset);
+	} while (cmp < 0 && idx < count && ++idx);
 	return cache;
 }
 
@@ -60,10 +68,55 @@ typedef struct {
 	BYTES2 glyphDataFormat;
 } headTbl;
 
-int olt_GLOBAL_unitsPerEm;
+short olt_GLOBAL_unitsPerEm;
+short olt_GLOBAL_indexToLocFormat;
 
 void olt_INTERN_parse_head(void *addr)
 {
 	headTbl *head = (headTbl *) addr;
 	olt_GLOBAL_unitsPerEm = ru16(head->unitsPerEm);
+	olt_GLOBAL_indexToLocFormat = ri16(head->indexToLocFormat);
+}
+
+typedef struct {
+	BYTES4 version;
+	BYTES2 numGlyphs;
+	BYTES2 maxPoints;
+	BYTES2 maxContours;
+	BYTES2 maxCompositePoints;
+	BYTES2 maxCompositeContours;
+	BYTES2 maxZones;
+	BYTES2 maxTwilightPoints;
+	BYTES2 maxStorage;
+	BYTES2 maxFunctionDefs;
+	BYTES2 maxInstructionDefs;
+	BYTES2 maxStackElements;
+	BYTES2 maxSizeofInstructions;
+	BYTES2 maxComponentElements;
+	BYTES2 maxComponentDepth;
+} maxpTbl;
+
+short olt_GLOBAL_numGlyphs;
+
+void olt_INTERN_parse_maxp(void *addr)
+{
+	maxpTbl *maxp = (maxpTbl *) addr;
+	assert(ru32(maxp.version) == 0x00010000);
+	olt_GLOBAL_numGlyphs = ru16(maxp->numGlyphs);
+}
+
+void olt_INTERN_parse_loca(void *addr)
+{
+	int n = olt_GLOBAL_numGlyphs + 1;
+	if (olt_GLOBAL_indexToLocFormat == 0) {
+		BYTES2 *loca = (BYTES2 *) addr;
+		for (int i = 0; i < n; ++i) {
+			[i] = ru16(loca[i]) * 2;
+		}
+	} else if (olt_GLOBAL_indexToLocFormat == 1) {
+		BYTES4 *loca = (BYTES4 *) addr;
+		for (int i = 0; i < n; ++i) {
+			[i] = ru32(loca[i]);
+		}
+	} else assert(0);
 }
