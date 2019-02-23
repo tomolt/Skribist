@@ -115,6 +115,9 @@ static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 			}
 			pointIdx += times;
 		}
+
+		// Close the loop
+		pre_scan_node(SGF_ON_CURVE_POINT);
 	}
 
 	info.numCurves = olt_GLOBAL_numCurves;
@@ -143,6 +146,7 @@ complicated. push_point() implements this using a simple finite state machine.
 
 static Point olt_GLOBAL_queuedStart;
 static Point olt_GLOBAL_queuedPivot;
+static Point olt_GLOBAL_origStart;
 
 static void push_point(Point newNode, int onCurve)
 {
@@ -150,6 +154,7 @@ static void push_point(Point newNode, int onCurve)
 	case 0:
 		assert(onCurve);
 		olt_GLOBAL_queuedStart = newNode;
+		olt_GLOBAL_origStart = newNode;
 		olt_GLOBAL_nodeState = 1;
 		break;
 	case 1:
@@ -236,6 +241,9 @@ static void parse_outline(OutlineInfo info)
 				--times;
 			} while (times > 0);
 		}
+
+		// Close the loop - but don't update relative origin point
+		push_point(olt_GLOBAL_origStart, SGF_ON_CURVE_POINT);
 	}
 }
 

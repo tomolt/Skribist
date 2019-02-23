@@ -21,6 +21,16 @@ typedef struct {
 	uint8_t area; // in the range 0 - 254
 } RasterCell;
 
+#if 0
+typedef struct {
+	SkrFormat format;
+	long width;
+	long height;
+	long stride;
+	void *data;
+} SkrImage;
+#endif
+
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
