@@ -121,7 +121,7 @@ int main(int argc, char const *argv[])
 
 	olt_INTERN_parse_outline(rawData + offcache.glyf + outlineOffset);
 
-	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { 0.5 + WIDTH / 2.0, 0.5 + HEIGHT / 2.0 } };
+	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 
 	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i)
 		olt_INTERN_raster_curve(olt_GLOBAL_parse.curves[i], transform);
