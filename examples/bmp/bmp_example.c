@@ -93,7 +93,12 @@ static void write_bmp(FILE *outFile)
 
 int main(int argc, char const *argv[])
 {
-	(void) argc, (void) argv;
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s <glyph>\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	Glyph glyph = atol(argv[1]);
 
 	int ret;
 
@@ -106,9 +111,15 @@ int main(int argc, char const *argv[])
 
 	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
 	olt_INTERN_parse_head(rawData + offcache.head);
-	fprintf(stderr, "unitsPerEm: %d\n", olt_GLOBAL_unitsPerEm);
+	olt_INTERN_parse_maxp(rawData + offcache.maxp);
 
-	olt_INTERN_parse_outline(rawData + offcache.glyf);
+	printf("unitsPerEm: %d\n", olt_GLOBAL_unitsPerEm);
+	printf("numGlyphs: %d\n", olt_GLOBAL_numGlyphs + 1);
+
+	unsigned long outlineOffset = olt_INTERN_get_outline(rawData + offcache.loca, glyph);
+	printf("outlineOffset[0]: %lu\n", outlineOffset);
+
+	olt_INTERN_parse_outline(rawData + offcache.glyf + outlineOffset);
 
 	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { 0.5 + WIDTH / 2.0, 0.5 + HEIGHT / 2.0 } };
 

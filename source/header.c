@@ -76,6 +76,7 @@ void olt_INTERN_parse_head(void *addr)
 	headTbl *head = (headTbl *) addr;
 	olt_GLOBAL_unitsPerEm = ru16(head->unitsPerEm);
 	olt_GLOBAL_indexToLocFormat = ri16(head->indexToLocFormat);
+	assert(olt_GLOBAL_indexToLocFormat == 0 || olt_GLOBAL_indexToLocFormat == 1);
 }
 
 typedef struct {
@@ -101,22 +102,22 @@ short olt_GLOBAL_numGlyphs;
 void olt_INTERN_parse_maxp(void *addr)
 {
 	maxpTbl *maxp = (maxpTbl *) addr;
-	assert(ru32(maxp.version) == 0x00010000);
+	assert(ru32(maxp->version) == 0x00010000);
 	olt_GLOBAL_numGlyphs = ru16(maxp->numGlyphs);
 }
 
-void olt_INTERN_parse_loca(void *addr)
+/*
+TODO maybe dedicated offset type
+*/
+unsigned long olt_INTERN_get_outline(void *locaAddr, Glyph glyph)
 {
 	int n = olt_GLOBAL_numGlyphs + 1;
-	if (olt_GLOBAL_indexToLocFormat == 0) {
-		BYTES2 *loca = (BYTES2 *) addr;
-		for (int i = 0; i < n; ++i) {
-			[i] = ru16(loca[i]) * 2;
-		}
-	} else if (olt_GLOBAL_indexToLocFormat == 1) {
-		BYTES4 *loca = (BYTES4 *) addr;
-		for (int i = 0; i < n; ++i) {
-			[i] = ru32(loca[i]);
-		}
-	} else assert(0);
+	assert(glyph < n);
+	if (!olt_GLOBAL_indexToLocFormat) {
+		BYTES2 *loca = (BYTES2 *) locaAddr;
+		return (unsigned long) ru16(loca[glyph]) * 2;
+	} else {
+		BYTES4 *loca = (BYTES4 *) locaAddr;
+		return ru32(loca[glyph]);
+	}
 }
