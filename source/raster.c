@@ -11,35 +11,33 @@
 RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-/*
-
-raster_dot() is completely flawed right now and has to be redone.
-Floating point inaccuracies can lead to wrong pixel coordinates
-if computed naively, so we add a small epsilon before rounding down.
-This however means that beg.x - px could become negative, which is
-something we *really* don't want. However, we also can't just round
-to nearest instead of down, because only one of the coordinates will
-be pixel-aligned in the common case.
-
-*/
-
 static void raster_dot(Point beg, Point end)
 {
-	int px = min(beg.x, end.x) + 0.001; // TODO cleanup
-	int py = min(beg.y, end.y) + 0.001; // TODO cleanup
-	int bx = round((beg.x - px) * 127.0);
-	int by = round((beg.y - py) * 127.0);
-	int ex = round((end.x - px) * 127.0);
-	int ey = round((end.y - py) * 127.0);
+	// beg & end quantized coordinates
+	long bqx = round(beg.x * 127.0);
+	long bqy = round(beg.y * 127.0);
+	long eqx = round(end.x * 127.0);
+	long eqy = round(end.y * 127.0);
+	// pixel coordinates
+	int px = min(bqx, eqx) / 127;
+	int py = min(bqy, eqy) / 127;
+	// corner quantized coordinates
+	long cqx = px * 127;
+	long cqy = py * 127;
+	// beg & end fractional coordinates
+	int bfx = bqx - cqx;
+	int bfy = bqy - cqy;
+	int efx = eqx - cqx;
+	int efy = eqy - cqy;
 
 	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * py + px];
 
-	int winding = sign(ey - by);
-	int cover = abs(ey - by); // in the range 0 - 127
+	int winding = sign(efy - bfy);
+	int cover = abs(efy - bfy); // in the range 0 - 127
 	cell->windingAndCover += winding * cover; // in the range -127 - 127
 
 	// TODO clamp
-	cell->area += abs(ex - bx) + 254 - 2 * max(ex, bx); // in the range 0 - 254
+	cell->area += abs(efx - bfx) + 254 - 2 * max(efx, bfx); // in the range 0 - 254
 }
 
 /*
