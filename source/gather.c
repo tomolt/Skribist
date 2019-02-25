@@ -29,11 +29,13 @@ void olt_INTERN_gather(void)
 			assert(windingAndCover >= -127 && windingAndCover <= 127);
 			assert(area >= 0 && area <= 254);
 			int value = acc + windingAndCover * area / 254; // in the range -127 - 127
+			assert(value >= -127 && value <= 127);
 			int scaledValue = value * 255 / 127; // in the range -255 - 255
+			assert(scaledValue >= -255 && scaledValue <= 255);
 			// TODO use standardized winding direction to obviate the need for this abs()
 			olt_GLOBAL_image[i] = abs(scaledValue);
 			acc += windingAndCover;
 		}
-		printf("%ld\n", acc);
+		assert(acc == 0);
 	}
 }
