@@ -13,31 +13,31 @@ uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
 static void raster_dot(Point beg, Point end)
 {
-	// beg & end quantized coordinates
-	long bqx = round(beg.x * 127.0);
-	long bqy = round(beg.y * 127.0);
-	long eqx = round(end.x * 127.0);
-	long eqy = round(end.y * 127.0);
+	// quantized beg & end coordinates
+	long qbx = round(beg.x * 127.0);
+	long qby = round(beg.y * 127.0);
+	long qex = round(end.x * 127.0);
+	long qey = round(end.y * 127.0);
 	// pixel coordinates
-	int px = min(bqx, eqx) / 127;
-	int py = min(bqy, eqy) / 127;
-	// corner quantized coordinates
-	long cqx = px * 127;
-	long cqy = py * 127;
-	// beg & end fractional coordinates
-	int bfx = bqx - cqx;
-	int bfy = bqy - cqy;
-	int efx = eqx - cqx;
-	int efy = eqy - cqy;
+	int px = min(qbx, qex) / 127;
+	int py = min(qby, qey) / 127;
+	// quantized corner coordinates
+	long qcx = px * 127;
+	long qcy = py * 127;
+	// fractional beg & end coordinates
+	int fbx = qbx - qcx;
+	int fby = qby - qcy;
+	int fex = qex - qcx;
+	int fey = qey - qcy;
 
 	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * py + px];
 
-	int winding = sign(efy - bfy);
-	int cover = abs(efy - bfy); // in the range 0 - 127
+	int winding = sign(fey - fby);
+	int cover = abs(fey - fby); // in the range 0 - 127
 	cell->windingAndCover += winding * cover; // in the range -127 - 127
 
 	// TODO clamp
-	cell->area += abs(efx - bfx) + 254 - 2 * max(efx, bfx); // in the range 0 - 254
+	cell->area += abs(fex - fbx) + 254 - 2 * max(fex, fbx); // in the range 0 - 254
 }
 
 /*
