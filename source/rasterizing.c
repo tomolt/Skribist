@@ -142,20 +142,19 @@ static Curve trf_curve(Curve curve, Transform trf)
 		trf_point(curve.ctrl, trf), trf_point(curve.end, trf) };
 }
 
-static void raster_curve(Curve curve, Transform transform)
+static void raster_curve(Curve curve)
 {
 	if (is_flat(curve)) {
 		raster_line((Line) { curve.beg, curve.end });
 	} else {
 		Curve segments[2];
 		split_curve(curve, segments);
-		raster_curve(segments[0], transform); // TODO don't overflow the stack
-		raster_curve(segments[1], transform); // in pathological cases.
+		raster_curve(segments[0]); // TODO don't overflow the stack
+		raster_curve(segments[1]); // in pathological cases.
 	}
 }
 
 void olt_INTERN_raster_curve(Curve curve, Transform transform)
 {
-	Curve rasterCurve = trf_curve(curve, transform);
-	raster_curve(rasterCurve, transform);
+	raster_curve(trf_curve(curve, transform));
 }
