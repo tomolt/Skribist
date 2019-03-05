@@ -13,10 +13,10 @@ C standard headers - we can use these even if we don't link with the standard li
 
 #include "header.h"
 #include "outline.h"
-#include "raster.h"
+#include "rasterizing.h"
 #include "reading.h"
 
-#include "gather.c"
+#include "casting.c"
 #include "header.c"
-#include "parse.c"
-#include "raster.c"
+#include "parsing.c"
+#include "rasterizing.c"

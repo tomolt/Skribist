@@ -27,7 +27,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "header.h"
 #include "outline.h"
-#include "raster.h"
+#include "rasterizing.h"
 
 #include <stdio.h>
 #include <stdlib.h>
