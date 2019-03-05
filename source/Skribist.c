@@ -11,9 +11,7 @@ C standard headers - we can use these even if we don't link with the standard li
 */
 #include <stdint.h>
 
-#include "header.h"
-#include "outline.h"
-#include "rasterizing.h"
+#include "Skribist.h"
 #include "reading.h"
 
 #include "casting.c"

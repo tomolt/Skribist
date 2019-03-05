@@ -25,9 +25,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
-#include "header.h"
-#include "outline.h"
-#include "rasterizing.h"
+#include "Skribist.h"
 
 #include <stdio.h>
 #include <stdlib.h>
