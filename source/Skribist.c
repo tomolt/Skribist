@@ -12,8 +12,8 @@ C standard headers - we can use these even if we don't link with the standard li
 #include <stdint.h>
 
 #include "Skribist.h"
-#include "reading.h"
 
+#include "reading.c"
 #include "casting.c"
 #include "header.c"
 #include "parsing.c"

@@ -1,10 +1,3 @@
-// depends on stdint.h
-
-#ifdef OLT_INTERN_READING_H
-#error multiple inclusion
-#endif
-#define OLT_INTERN_READING_H
-
 typedef uint8_t  BYTES1;
 typedef uint16_t BYTES2;
 typedef uint32_t BYTES4;
