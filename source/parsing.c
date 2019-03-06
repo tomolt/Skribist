@@ -42,11 +42,11 @@ static unsigned int olt_GLOBAL_numCurves;
 /*
 
 By the design of TrueType it's not possible to parse an outline in a single pass.
-So instead, we run a 'pre-scan' before the actual parsing stage.
+So instead, we run an 'explore' phase before the actual parsing stage.
 
 */
 
-static void pre_scan_node(int onCurve)
+static void ExtendContourWhilstExploring(int onCurve)
 {
 	switch (olt_GLOBAL_nodeState) {
 	case 0:
@@ -74,7 +74,7 @@ static void pre_scan_node(int onCurve)
 	}
 }
 
-static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
+static OutlineInfo ExploreOutline(BYTES1 *glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	OutlineInfo info = { 0 };
@@ -111,13 +111,13 @@ static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 			if (flags & SGF_REPEAT_FLAG)
 				times += *(glyfCursor++);
 			for (unsigned int t = 0; t < times; ++t) {
-				pre_scan_node(flags & SGF_ON_CURVE_POINT);
+				ExtendContourWhilstExploring(flags & SGF_ON_CURVE_POINT);
 			}
 			pointIdx += times;
 		}
 
 		// Close the loop
-		pre_scan_node(SGF_ON_CURVE_POINT);
+		ExtendContourWhilstExploring(SGF_ON_CURVE_POINT);
 	}
 
 	info.numCurves = olt_GLOBAL_numCurves;
@@ -133,7 +133,7 @@ static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 When we find a new point, we can't generally output a new curve for it right away.
 Instead, we have to buffer them up until we can construct a valid curve.
 Because of the complicated packing scheme used in TrueType, this is somewhat
-complicated. push_point() implements this using a simple finite state machine.
+complicated. ExtendContourWhilstExploring() implements this using a simple finite state machine.
 
 */
 
@@ -141,7 +141,7 @@ static Point olt_GLOBAL_queuedStart;
 static Point olt_GLOBAL_queuedPivot;
 static Point olt_GLOBAL_origStart;
 
-static void push_point(Point newNode, int onCurve)
+static void ExtendContourWhilstParsing(Point newNode, int onCurve)
 {
 	switch (olt_GLOBAL_nodeState) {
 	case 0:
@@ -208,7 +208,7 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 	return co;
 }
 
-static void parse_outline(OutlineInfo info)
+static void ParseOutline(OutlineInfo info)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
@@ -228,7 +228,7 @@ static void parse_outline(OutlineInfo info)
 			do {
 				long x = pull_coordinate(flags, &info.xPtr, prevX);
 				long y = pull_coordinate(flags >> 1, &info.yPtr, prevY);
-				push_point((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
+				ExtendContourWhilstParsing((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;
@@ -236,15 +236,15 @@ static void parse_outline(OutlineInfo info)
 		}
 
 		// Close the loop - but don't update relative origin point
-		push_point(olt_GLOBAL_origStart, SGF_ON_CURVE_POINT);
+		ExtendContourWhilstParsing(olt_GLOBAL_origStart, SGF_ON_CURVE_POINT);
 	}
 }
 
 void olt_INTERN_parse_outline(void *addr)
 {
-	OutlineInfo info = pre_scan_outline(addr);
+	OutlineInfo info = ExploreOutline(addr);
 	olt_GLOBAL_parse.elems = calloc(info.numCurves, sizeof(Curve));
-	parse_outline(info);
+	ParseOutline(info);
 
 	assert(info.numCurves == olt_GLOBAL_parse.count);
 }
