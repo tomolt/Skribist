@@ -75,10 +75,24 @@ typedef struct {
 } SkrImage;
 #endif
 
-extern CurveBuffer olt_GLOBAL_parse;
+/*
+All information resulting from the
+exploration pass.
+*/
+typedef struct {
+	int numContours;
+	BYTES2 * endPts;
+	BYTES1 * flagsPtr;
+	BYTES1 * xPtr;
+	BYTES1 * yPtr;
+	int neededSpace;
+} ParsingClue;
 
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
+
+ParsingClue skrExploreOutline(BYTES1 * glyfEntry);
+void skrParseOutline(ParsingClue clue, CurveBuffer * destination);
 
 void skrBeginTesselating(CurveBuffer const *source,
 	Transform transform, CurveBuffer *stack);

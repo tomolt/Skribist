@@ -11,6 +11,7 @@ C standard headers - we can use these even if we don't link with the standard li
 */
 #include <stdint.h>
 
+#include "reading.c" // FIXME
 #include "Skribist.h"
 
 static Point Midpoint(Point a, Point b)
@@ -20,7 +21,6 @@ static Point Midpoint(Point a, Point b)
 	return (Point) { x, y };
 }
 
-#include "reading.c"
 #include "casting.c"
 #include "header.c"
 #include "parsing.c"

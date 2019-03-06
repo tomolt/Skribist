@@ -25,6 +25,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
+#include "../../source/reading.c" // FIXME remove this dependency
 #include "Skribist.h"
 
 #include <stdio.h>
@@ -117,15 +118,17 @@ int main(int argc, char const *argv[])
 	unsigned long outlineOffset = olt_INTERN_get_outline(rawData + offcache.loca, glyph);
 	printf("outlineOffset[0]: %lu\n", outlineOffset);
 
-	olt_INTERN_parse_outline(rawData + offcache.glyf + outlineOffset);
+	ParsingClue parsingClue = skrExploreOutline(rawData + offcache.glyf + outlineOffset);
+	CurveBuffer curveList = (CurveBuffer) {
+		.space = parsingClue.neededSpace,
+		.count = 0,
+		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
+	skrParseOutline(parsingClue, &curveList);
+	assert(curveList.space == curveList.count);
 
 	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 
 	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
-	CurveBuffer curveList = {
-		.space = olt_GLOBAL_parse.count,
-		.count = olt_GLOBAL_parse.count,
-		.elems = olt_GLOBAL_parse.elems };
 	CurveBuffer tesselStack = {
 		.space = 1000,
 		.count = 0,

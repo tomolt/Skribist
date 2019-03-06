@@ -22,84 +22,72 @@ typedef struct {
 } ShHdr;
 
 /*
-All information resulting from the
-pre-scan pass.
-*/
-typedef struct {
-	int numContours;
-	BYTES2 *endPts;
-	BYTES1 *flagsPtr;
-	BYTES1 *xPtr;
-	BYTES1 *yPtr;
-	int numCurves;
-} OutlineInfo;
-
-CurveBuffer olt_GLOBAL_parse;
-
-static unsigned int olt_GLOBAL_nodeState;
-static unsigned int olt_GLOBAL_numCurves;
-
-/*
 
 By the design of TrueType it's not possible to parse an outline in a single pass.
 So instead, we run an 'explore' phase before the actual parsing stage.
 
 */
 
-static void ExtendContourWhilstExploring(int onCurve)
+typedef struct {
+	unsigned int state, neededSpace;
+} ExploringFSM;
+
+static void ExtendContourWhilstExploring(ExploringFSM * fsm, int onCurve)
 {
-	switch (olt_GLOBAL_nodeState) {
+	switch (fsm->state) {
 	case 0:
 		assert(onCurve);
-		olt_GLOBAL_nodeState = 1;
+		fsm->state = 1;
 		break;
 	case 1:
 		if (onCurve) {
-			++olt_GLOBAL_numCurves;
+			++fsm->neededSpace;
 			break;
 		} else {
-			olt_GLOBAL_nodeState = 2;
+			fsm->state = 2;
 			break;
 		}
 	case 2:
 		if (onCurve) {
-			++olt_GLOBAL_numCurves;
-			olt_GLOBAL_nodeState = 1;
+			++fsm->neededSpace;
+			fsm->state = 1;
 			break;
 		} else {
-			++olt_GLOBAL_numCurves;
+			++fsm->neededSpace;
 			break;
 		}
 	default: assert(0);
 	}
 }
 
-static OutlineInfo ExploreOutline(BYTES1 *glyfEntry)
+ParsingClue skrExploreOutline(BYTES1 * glyfEntry)
 {
 	BYTES1 *glyfCursor = glyfEntry;
-	OutlineInfo info = { 0 };
+	ParsingClue clue = { 0 };
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
-	info.numContours = ri16(sh->numContours);
-	assert(info.numContours >= 0);
+	clue.numContours = ri16(sh->numContours);
+	assert(clue.numContours >= 0);
 	glyfCursor += 10;
 
 	BYTES2 *endPts = (BYTES2 *) glyfCursor;
-	info.endPts = endPts;
-	glyfCursor += 2 * info.numContours;
+	clue.endPts = endPts;
+	glyfCursor += 2 * clue.numContours;
 
 	int instrLength = ri16(*(BYTES2 *) glyfCursor);
 	glyfCursor += 2 + instrLength;
 
-	info.flagsPtr = glyfCursor;
+	clue.flagsPtr = glyfCursor;
 
 	unsigned long xBytes = 0;
 	int pointIdx = 0;
 
-	for (int c = 0; c < info.numContours; ++c) {
-		int endPt = ru16(info.endPts[c]);
+	ExploringFSM fsm = { 0, 0 };
 
-		olt_GLOBAL_nodeState = 0;
+	for (int c = 0; c < clue.numContours; ++c) {
+		int endPt = ru16(clue.endPts[c]);
+
+		fsm.state = 0;
 
 		while (pointIdx <= endPt) {
 			uint8_t flags = *(glyfCursor++);
@@ -111,21 +99,21 @@ static OutlineInfo ExploreOutline(BYTES1 *glyfEntry)
 			if (flags & SGF_REPEAT_FLAG)
 				times += *(glyfCursor++);
 			for (unsigned int t = 0; t < times; ++t) {
-				ExtendContourWhilstExploring(flags & SGF_ON_CURVE_POINT);
+				ExtendContourWhilstExploring(&fsm, flags & SGF_ON_CURVE_POINT);
 			}
 			pointIdx += times;
 		}
 
 		// Close the loop
-		ExtendContourWhilstExploring(SGF_ON_CURVE_POINT);
+		ExtendContourWhilstExploring(&fsm, SGF_ON_CURVE_POINT);
 	}
 
-	info.numCurves = olt_GLOBAL_numCurves;
+	clue.neededSpace = fsm.neededSpace;
 
-	info.xPtr = glyfCursor;
-	info.yPtr = glyfCursor + xBytes;
+	clue.xPtr = glyfCursor;
+	clue.yPtr = glyfCursor + xBytes;
 
-	return info;
+	return clue;
 }
 
 /*
@@ -137,44 +125,48 @@ complicated. ExtendContourWhilstExploring() implements this using a simple finit
 
 */
 
-static Point olt_GLOBAL_queuedStart;
-static Point olt_GLOBAL_queuedPivot;
-static Point olt_GLOBAL_origStart;
+typedef struct {
+	unsigned int state;
+	Point queuedStart;
+	Point queuedPivot;
+	Point looseEnd;
+	CurveBuffer * dest;
+} ParsingFSM;
 
-static void ExtendContourWhilstParsing(Point newNode, int onCurve)
+static void ExtendContourWhilstParsing(ParsingFSM * fsm, Point newNode, int onCurve)
 {
-	switch (olt_GLOBAL_nodeState) {
+	switch (fsm->state) {
 	case 0:
 		assert(onCurve);
-		olt_GLOBAL_queuedStart = newNode;
-		olt_GLOBAL_origStart = newNode;
-		olt_GLOBAL_nodeState = 1;
+		fsm->queuedStart = newNode;
+		fsm->looseEnd = newNode;
+		fsm->state = 1;
 		break;
 	case 1:
 		if (onCurve) {
-			Point pivot = Midpoint(olt_GLOBAL_queuedStart, newNode);
-			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
-			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
-			olt_GLOBAL_queuedStart = newNode;
+			Point pivot = Midpoint(fsm->queuedStart, newNode);
+			Curve curve = { fsm->queuedStart, pivot, newNode };
+			fsm->dest->elems[fsm->dest->count++] = curve;
+			fsm->queuedStart = newNode;
 			break;
 		} else {
-			olt_GLOBAL_queuedPivot = newNode;
-			olt_GLOBAL_nodeState = 2;
+			fsm->queuedPivot = newNode;
+			fsm->state = 1;
 			break;
 		}
 	case 2:
 		if (onCurve) {
-			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode };
-			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
-			olt_GLOBAL_queuedStart = newNode;
-			olt_GLOBAL_nodeState = 1;
+			Curve curve = { fsm->queuedStart, fsm->queuedPivot, newNode };
+			fsm->dest->elems[fsm->dest->count++] = curve;
+			fsm->queuedStart = newNode;
+			fsm->state = 1;
 			break;
 		} else {
-			Point implicit = Midpoint(olt_GLOBAL_queuedPivot, newNode);
-			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
-			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
-			olt_GLOBAL_queuedStart = implicit;
-			olt_GLOBAL_queuedPivot = newNode;
+			Point implicit = Midpoint(fsm->queuedPivot, newNode);
+			Curve curve = { fsm->queuedStart, fsm->queuedPivot, implicit };
+			fsm->dest->elems[fsm->dest->count++] = curve;
+			fsm->queuedStart = implicit;
+			fsm->queuedPivot = newNode;
 			break;
 		}
 	default: assert(0);
@@ -184,13 +176,13 @@ static void ExtendContourWhilstParsing(Point newNode, int onCurve)
 /*
 
 Pulls the next coordinate from the memory pointed to by ptr, and
-interprets it according to flags. Technically, pull_coordinate()
+interprets it according to flags. Technically, GetCoordinateAndAdvance()
 is only implemented for the x coordinate, however by right
 shifting the relevant flags by 1 we can also use this function for
 y coordinates.
 
 */
-static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
+static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 {
 	long co = prev;
 	if (flags & SGF_SHORT_X_COORD) {
@@ -208,27 +200,29 @@ static long pull_coordinate(BYTES1 flags, BYTES1 **ptr, long prev)
 	return co;
 }
 
-static void ParseOutline(OutlineInfo info)
+void skrParseOutline(ParsingClue clue, CurveBuffer * destination)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
 
-	for (int c = 0; c < info.numContours; ++c) {
-		int endPt = ru16(info.endPts[c]);
+	ParsingFSM fsm = { 0, { 0.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, destination };
 
-		olt_GLOBAL_nodeState = 0;
+	for (int c = 0; c < clue.numContours; ++c) {
+		int endPt = ru16(clue.endPts[c]);
+
+		fsm.state = 0;
 
 		while (pointIdx <= endPt) {
-			BYTES1 flags = *(info.flagsPtr++);
+			BYTES1 flags = *(clue.flagsPtr++);
 
 			unsigned int times = 1;
 			if (flags & SGF_REPEAT_FLAG)
-				times += *(info.flagsPtr++);
+				times += *(clue.flagsPtr++);
 
 			do {
-				long x = pull_coordinate(flags, &info.xPtr, prevX);
-				long y = pull_coordinate(flags >> 1, &info.yPtr, prevY);
-				ExtendContourWhilstParsing((Point) { x, y }, flags & SGF_ON_CURVE_POINT);
+				long x = GetCoordinateAndAdvance(flags, &clue.xPtr, prevX);
+				long y = GetCoordinateAndAdvance(flags >> 1, &clue.yPtr, prevY);
+				ExtendContourWhilstParsing(&fsm, (Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;
@@ -236,15 +230,6 @@ static void ParseOutline(OutlineInfo info)
 		}
 
 		// Close the loop - but don't update relative origin point
-		ExtendContourWhilstParsing(olt_GLOBAL_origStart, SGF_ON_CURVE_POINT);
+		ExtendContourWhilstParsing(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT);
 	}
-}
-
-void olt_INTERN_parse_outline(void *addr)
-{
-	OutlineInfo info = ExploreOutline(addr);
-	olt_GLOBAL_parse.elems = calloc(info.numCurves, sizeof(Curve));
-	ParseOutline(info);
-
-	assert(info.numCurves == olt_GLOBAL_parse.count);
 }
