@@ -32,32 +32,32 @@ static Curve TransformCurve(Curve curve, Transform trf)
 		TransformPoint(curve.ctrl, trf), TransformPoint(curve.end, trf) };
 }
 
-void skrBeginTesselating(CurveList const *source,
-	Transform transform, CurveStack *stack)
+void skrBeginTesselating(CurveBuffer const *source,
+	Transform transform, CurveBuffer *stack)
 {
 	assert(stack->space >= source->count);
 	for (int i = 0; i < source->count; ++i) {
 		Curve curve = TransformCurve(source->elems[i], transform);
-		stack->elems[stack->top] = curve;
-		++stack->top;
+		stack->elems[stack->count] = curve;
+		++stack->count;
 	}
 }
 
-void skrContinueTesselating(CurveStack *stack, double flatness, LineList *dest)
+void skrContinueTesselating(CurveBuffer *stack, double flatness, LineBuffer *dest)
 {
 	// TODO only pop curve from stack *after* testing for space. Needed to make this reentrant.
-	while (stack->top > 0) {
-		--stack->top;
-		Curve curve = stack->elems[stack->top];
+	while (stack->count > 0) {
+		--stack->count;
+		Curve curve = stack->elems[stack->count];
 		if (IsFlat(curve, flatness)) {
 			assert(dest->space >= dest->count + 1);
 			Line line = { curve.beg, curve.end };
 			dest->elems[dest->count] = line;
 			++dest->count;
 		} else {
-			assert(stack->space >= stack->top + 2);
-			SplitCurve(curve, &stack->elems[stack->top]);
-			stack->top += 2;
+			assert(stack->space >= stack->count + 2);
+			SplitCurve(curve, &stack->elems[stack->count]);
+			stack->count += 2;
 		}
 	}
 }

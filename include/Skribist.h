@@ -38,15 +38,6 @@ typedef struct {
 	Point end;
 } Curve;
 
-struct olt_Parse {
-	int numCurves;
-	Curve *curves;
-};
-
-typedef struct olt_Parse olt_Parse; // REDUNDANT
-
-extern olt_Parse olt_GLOBAL_parse;
-
 void olt_INTERN_parse_outline(void *addr);
 
 #define WIDTH 256
@@ -60,19 +51,14 @@ typedef struct {
 } Transform;
 
 typedef struct {
-	int count;
+	int space, count;
 	Curve *elems;
-} CurveList;
-
-typedef struct {
-	int space, top;
-	Curve *elems;
-} CurveStack;
+} CurveBuffer;
 
 typedef struct {
 	int space, count;
 	Line *elems;
-} LineList;
+} LineBuffer;
 
 typedef struct {
 	int8_t windingAndCover; // in the range -127 - 127
@@ -89,15 +75,17 @@ typedef struct {
 } SkrImage;
 #endif
 
+extern CurveBuffer olt_GLOBAL_parse;
+
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-void skrBeginTesselating(CurveList const *source,
-	Transform transform, CurveStack *stack);
-void skrContinueTesselating(CurveStack *stack,
-	double flatness, LineList *dest);
+void skrBeginTesselating(CurveBuffer const *source,
+	Transform transform, CurveBuffer *stack);
+void skrContinueTesselating(CurveBuffer *stack,
+	double flatness, LineBuffer *dest);
 
-void skrRasterizeLines(LineList const *source);
+void skrRasterizeLines(LineBuffer const *source);
 
 void olt_INTERN_gather(void);
 

@@ -122,14 +122,15 @@ int main(int argc, char const *argv[])
 	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 
 	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
-	CurveList curveList = {
-		.count = olt_GLOBAL_parse.numCurves,
-		.elems = olt_GLOBAL_parse.curves };
-	CurveStack tesselStack = {
+	CurveBuffer curveList = {
+		.space = olt_GLOBAL_parse.count,
+		.count = olt_GLOBAL_parse.count,
+		.elems = olt_GLOBAL_parse.elems };
+	CurveBuffer tesselStack = {
 		.space = 1000,
-		.top = 0,
+		.count = 0,
 		.elems = malloc(1000 * sizeof(Curve)) };
-	LineList lineList = {
+	LineBuffer lineList = {
 		.space = 1000,
 		.count = 0,
 		.elems = malloc(1000 * sizeof(Line)) };

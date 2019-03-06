@@ -108,7 +108,7 @@ static void RasterizeLine(Line line)
 	RasterizeDot(prev_pt, line.end);
 }
 
-void skrRasterizeLines(LineList const *source)
+void skrRasterizeLines(LineBuffer const *source)
 {
 	for (int i = 0; i < source->count; ++i) {
 		RasterizeLine(source->elems[i]);

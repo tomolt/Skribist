@@ -34,7 +34,7 @@ typedef struct {
 	int numCurves;
 } OutlineInfo;
 
-olt_Parse olt_GLOBAL_parse;
+CurveBuffer olt_GLOBAL_parse;
 
 static unsigned int olt_GLOBAL_nodeState;
 static unsigned int olt_GLOBAL_numCurves;
@@ -154,7 +154,7 @@ static void push_point(Point newNode, int onCurve)
 		if (onCurve) {
 			Point pivot = Midpoint(olt_GLOBAL_queuedStart, newNode);
 			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
 			olt_GLOBAL_queuedStart = newNode;
 			break;
 		} else {
@@ -165,14 +165,14 @@ static void push_point(Point newNode, int onCurve)
 	case 2:
 		if (onCurve) {
 			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, newNode };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
 			olt_GLOBAL_queuedStart = newNode;
 			olt_GLOBAL_nodeState = 1;
 			break;
 		} else {
 			Point implicit = Midpoint(olt_GLOBAL_queuedPivot, newNode);
 			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
-			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
+			olt_GLOBAL_parse.elems[olt_GLOBAL_parse.count++] = curve;
 			olt_GLOBAL_queuedStart = implicit;
 			olt_GLOBAL_queuedPivot = newNode;
 			break;
@@ -243,8 +243,8 @@ static void parse_outline(OutlineInfo info)
 void olt_INTERN_parse_outline(void *addr)
 {
 	OutlineInfo info = pre_scan_outline(addr);
-	olt_GLOBAL_parse.curves = calloc(info.numCurves, sizeof(Curve));
+	olt_GLOBAL_parse.elems = calloc(info.numCurves, sizeof(Curve));
 	parse_outline(info);
 
-	assert(info.numCurves == olt_GLOBAL_parse.numCurves);
+	assert(info.numCurves == olt_GLOBAL_parse.count);
 }
