@@ -129,8 +129,15 @@ int main(int argc, char const *argv[])
 		.space = 1000,
 		.top = 0,
 		.elems = malloc(1000 * sizeof(Curve)) };
+	LineList lineList = {
+		.space = 1000,
+		.count = 0,
+		.elems = malloc(1000 * sizeof(Line)) };
+
 	skrBeginTesselating(&curveList, transform, &tesselStack);
-	skrContinueTesselating(&tesselStack, 0.5);
+	skrContinueTesselating(&tesselStack, 0.5, &lineList);
+
+	skrRasterizeLines(&lineList);
 
 	olt_INTERN_gather();
 	write_bmp(outFile);

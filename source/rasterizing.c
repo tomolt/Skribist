@@ -11,7 +11,7 @@
 RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-static void raster_dot(Point beg, Point end)
+static void RasterizeDot(Point beg, Point end)
 {
 	// quantized beg & end coordinates
 	long qbx = round(beg.x * 127.0);
@@ -42,14 +42,14 @@ static void raster_dot(Point beg, Point end)
 
 /*
 
-raster_line() is intended to take in a single line and pass it on as a sequence of dots.
+RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
 
 */
 
-static void raster_line(Line line)
+static void RasterizeLine(Line line)
 {
 	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
 
@@ -99,11 +99,18 @@ static void raster_line(Line line)
 		pt.x = line.beg.x + t * diff.x;
 		pt.y = line.beg.y + t * diff.y;
 
-		raster_dot(prev_pt, pt);
+		RasterizeDot(prev_pt, pt);
 
 		prev_t = t;
 		prev_pt = pt;
 	}
 
-	raster_dot(prev_pt, line.end);
+	RasterizeDot(prev_pt, line.end);
+}
+
+void skrRasterizeLines(LineList const *source)
+{
+	for (int i = 0; i < source->count; ++i) {
+		RasterizeLine(source->elems[i]);
+	}
 }

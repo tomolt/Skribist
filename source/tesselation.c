@@ -43,15 +43,19 @@ void skrBeginTesselating(CurveList const *source,
 	}
 }
 
-void skrContinueTesselating(CurveStack *stack, double flatness)
+void skrContinueTesselating(CurveStack *stack, double flatness, LineList *dest)
 {
+	// TODO only pop curve from stack *after* testing for space. Needed to make this reentrant.
 	while (stack->top > 0) {
 		--stack->top;
 		Curve curve = stack->elems[stack->top];
 		if (IsFlat(curve, flatness)) {
-			raster_line((Line) { curve.beg, curve.end });
+			assert(dest->space >= dest->count + 1);
+			Line line = { curve.beg, curve.end };
+			dest->elems[dest->count] = line;
+			++dest->count;
 		} else {
-			assert(stack->top + 2 <= stack->space);
+			assert(stack->space >= stack->top + 2);
 			SplitCurve(curve, &stack->elems[stack->top]);
 			stack->top += 2;
 		}
