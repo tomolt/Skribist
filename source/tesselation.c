@@ -45,7 +45,7 @@ void skrBeginTesselating(CurveList const *source,
 
 void skrContinueTesselating(CurveStack *stack, double flatness)
 {
-	do {
+	while (stack->top > 0) {
 		--stack->top;
 		Curve curve = stack->elems[stack->top];
 		if (is_flat(curve, flatness)) {
@@ -55,5 +55,5 @@ void skrContinueTesselating(CurveStack *stack, double flatness)
 			split_curve(curve, &stack->elems[stack->top]);
 			stack->top += 2;
 		}
-	} while (stack->top > 0);
+	}
 }
