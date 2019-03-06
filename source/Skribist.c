@@ -13,6 +13,13 @@ C standard headers - we can use these even if we don't link with the standard li
 
 #include "Skribist.h"
 
+static Point Midpoint(Point a, Point b)
+{
+	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
+	double y = (a.y + b.y) / 2.0;
+	return (Point) { x, y };
+}
+
 #include "reading.c"
 #include "casting.c"
 #include "header.c"

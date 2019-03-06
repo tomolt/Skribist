@@ -128,13 +128,6 @@ static OutlineInfo pre_scan_outline(BYTES1 *glyfEntry)
 	return info;
 }
 
-static Point interp_points(Point a, Point b)
-{
-	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
-	double y = (a.y + b.y) / 2.0;
-	return (Point) { x, y };
-}
-
 /*
 
 When we find a new point, we can't generally output a new curve for it right away.
@@ -159,7 +152,7 @@ static void push_point(Point newNode, int onCurve)
 		break;
 	case 1:
 		if (onCurve) {
-			Point pivot = interp_points(olt_GLOBAL_queuedStart, newNode);
+			Point pivot = Midpoint(olt_GLOBAL_queuedStart, newNode);
 			Curve curve = { olt_GLOBAL_queuedStart, pivot, newNode };
 			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
 			olt_GLOBAL_queuedStart = newNode;
@@ -177,7 +170,7 @@ static void push_point(Point newNode, int onCurve)
 			olt_GLOBAL_nodeState = 1;
 			break;
 		} else {
-			Point implicit = interp_points(olt_GLOBAL_queuedPivot, newNode);
+			Point implicit = Midpoint(olt_GLOBAL_queuedPivot, newNode);
 			Curve curve = { olt_GLOBAL_queuedStart, olt_GLOBAL_queuedPivot, implicit };
 			olt_GLOBAL_parse.curves[olt_GLOBAL_parse.numCurves++] = curve;
 			olt_GLOBAL_queuedStart = implicit;
