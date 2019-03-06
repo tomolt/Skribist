@@ -121,8 +121,16 @@ int main(int argc, char const *argv[])
 
 	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 
-	for (int i = 0; i < olt_GLOBAL_parse.numCurves; ++i)
-		olt_INTERN_raster_curve(olt_GLOBAL_parse.curves[i], transform);
+	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
+	CurveList curveList = {
+		.count = olt_GLOBAL_parse.numCurves,
+		.elems = olt_GLOBAL_parse.curves };
+	CurveStack tesselStack = {
+		.space = 1000,
+		.top = 0,
+		.elems = malloc(1000 * sizeof(Curve)) };
+	skrBeginTesselating(&curveList, transform, &tesselStack);
+	skrContinueTesselating(&tesselStack, 0.5);
 
 	olt_INTERN_gather();
 	write_bmp(outFile);

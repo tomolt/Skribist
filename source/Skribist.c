@@ -18,3 +18,4 @@ C standard headers - we can use these even if we don't link with the standard li
 #include "header.c"
 #include "parsing.c"
 #include "rasterizing.c"
+#include "tesselation.c"

@@ -60,6 +60,16 @@ typedef struct {
 } Transform;
 
 typedef struct {
+	int count;
+	Curve *elems;
+} CurveList;
+
+typedef struct {
+	int space, top;
+	Curve *elems;
+} CurveStack;
+
+typedef struct {
 	int8_t windingAndCover; // in the range -127 - 127
 	uint8_t area; // in the range 0 - 254
 } RasterCell;
@@ -77,7 +87,9 @@ typedef struct {
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-void olt_INTERN_raster_curve(Curve curve, Transform transform);
+void skrBeginTesselating(CurveList const *source,
+	Transform transform, CurveStack *stack);
+void skrContinueTesselating(CurveStack *stack, double flatness);
 
 void olt_INTERN_gather(void);
 
