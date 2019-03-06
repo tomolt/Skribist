@@ -142,19 +142,30 @@ static Curve trf_curve(Curve curve, Transform trf)
 		trf_point(curve.ctrl, trf), trf_point(curve.end, trf) };
 }
 
-static void raster_curve(Curve curve)
+static void TesselateCurve(Curve root)
 {
-	if (is_flat(curve)) {
-		raster_line((Line) { curve.beg, curve.end });
-	} else {
-		Curve segments[2];
-		split_curve(curve, segments);
-		raster_curve(segments[0]); // TODO don't overflow the stack
-		raster_curve(segments[1]); // in pathological cases.
-	}
+	Curve stack[1000];
+	int top = 0;
+	stack[top] = root;
+	++top;
+	do {
+		--top;
+		Curve curve = stack[top];
+		if (is_flat(curve)) {
+			raster_line((Line) { curve.beg, curve.end });
+		} else {
+			assert(top + 2 <= 1000);
+			Curve segments[2];
+			split_curve(curve, segments);
+			stack[top] = segments[0];
+			++top;
+			stack[top] = segments[1];
+			++top;
+		}
+	} while (top > 0);
 }
 
 void olt_INTERN_raster_curve(Curve curve, Transform transform)
 {
-	raster_curve(trf_curve(curve, transform));
+	TesselateCurve(trf_curve(curve, transform));
 }
