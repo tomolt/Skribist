@@ -151,7 +151,7 @@ static void ExtendContourWhilstParsing(ParsingFSM * fsm, Point newNode, int onCu
 			break;
 		} else {
 			fsm->queuedPivot = newNode;
-			fsm->state = 1;
+			fsm->state = 2;
 			break;
 		}
 	case 2:
