@@ -60,7 +60,7 @@ static void ExtendContourWhilstExploring(ExploringFSM * fsm, int onCurve)
 	}
 }
 
-ParsingClue skrExploreOutline(BYTES1 * glyfEntry)
+void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 {
 	BYTES1 *glyfCursor = glyfEntry;
 	ParsingClue clue = { 0 };
@@ -113,7 +113,7 @@ ParsingClue skrExploreOutline(BYTES1 * glyfEntry)
 	clue.xPtr = glyfCursor;
 	clue.yPtr = glyfCursor + xBytes;
 
-	return clue;
+	*destination = clue;
 }
 
 /*
@@ -200,28 +200,28 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 	return co;
 }
 
-void skrParseOutline(ParsingClue clue, CurveBuffer * destination)
+void skrParseOutline(ParsingClue * clue, CurveBuffer * destination)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
 
 	ParsingFSM fsm = { 0, { 0.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, destination };
 
-	for (int c = 0; c < clue.numContours; ++c) {
-		int endPt = ru16(clue.endPts[c]);
+	for (int c = 0; c < clue->numContours; ++c) {
+		int endPt = ru16(clue->endPts[c]);
 
 		fsm.state = 0;
 
 		while (pointIdx <= endPt) {
-			BYTES1 flags = *(clue.flagsPtr++);
+			BYTES1 flags = *(clue->flagsPtr++);
 
 			unsigned int times = 1;
 			if (flags & SGF_REPEAT_FLAG)
-				times += *(clue.flagsPtr++);
+				times += *(clue->flagsPtr++);
 
 			do {
-				long x = GetCoordinateAndAdvance(flags, &clue.xPtr, prevX);
-				long y = GetCoordinateAndAdvance(flags >> 1, &clue.yPtr, prevY);
+				long x = GetCoordinateAndAdvance(flags, &clue->xPtr, prevX);
+				long y = GetCoordinateAndAdvance(flags >> 1, &clue->yPtr, prevY);
 				ExtendContourWhilstParsing(&fsm, (Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;

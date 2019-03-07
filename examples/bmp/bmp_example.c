@@ -118,12 +118,13 @@ int main(int argc, char const *argv[])
 	unsigned long outlineOffset = olt_INTERN_get_outline(rawData + offcache.loca, glyph);
 	printf("outlineOffset[0]: %lu\n", outlineOffset);
 
-	ParsingClue parsingClue = skrExploreOutline(rawData + offcache.glyf + outlineOffset);
+	ParsingClue parsingClue;
+	skrExploreOutline(rawData + offcache.glyf + outlineOffset, &parsingClue);
 	CurveBuffer curveList = (CurveBuffer) {
 		.space = parsingClue.neededSpace,
 		.count = 0,
 		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
-	skrParseOutline(parsingClue, &curveList);
+	skrParseOutline(&parsingClue, &curveList);
 	assert(curveList.space == curveList.count);
 
 	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };

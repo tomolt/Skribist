@@ -91,8 +91,8 @@ typedef struct {
 extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
 extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
 
-ParsingClue skrExploreOutline(BYTES1 * glyfEntry);
-void skrParseOutline(ParsingClue clue, CurveBuffer * destination);
+void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination);
+void skrParseOutline(ParsingClue * clue, CurveBuffer * destination);
 
 void skrBeginTesselating(CurveBuffer const *source,
 	Transform transform, CurveBuffer *stack);
