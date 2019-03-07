@@ -1,4 +1,4 @@
-static int SKR_strncmp(char const *a, char const *b, long n)
+static int SKR_strncmp(char const * a, char const * b, long n)
 {
 	for (long i = 0; i < n; ++i) {
 		if (a[i] != b[i])
@@ -23,29 +23,27 @@ typedef struct {
 	offsetEnt entries[];
 } offsetTbl;
 
-OffsetCache olt_INTERN_cache_offsets(void *addr)
+static void olt_INTERN_cache_offsets(SKR_Font * font)
 {
-	offsetTbl *offt = (offsetTbl *) addr;
-	OffsetCache cache = { 0 };
+	offsetTbl const * offt = (offsetTbl const *) font->data;
 	int count = ru16(offt->numTables);
 	int idx = 0, cmp;
 	do {
 		cmp = SKR_strncmp(offt->entries[idx].tag, "glyf", 4);
-		if (!cmp) cache.glyf = ru32(offt->entries[idx].offset);
+		if (!cmp) font->glyf = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	do {
 		cmp = SKR_strncmp(offt->entries[idx].tag, "head", 4);
-		if (!cmp) cache.head = ru32(offt->entries[idx].offset);
+		if (!cmp) font->head = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	do {
 		cmp = SKR_strncmp(offt->entries[idx].tag, "loca", 4);
-		if (!cmp) cache.loca = ru32(offt->entries[idx].offset);
+		if (!cmp) font->loca = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
 	do {
 		cmp = SKR_strncmp(offt->entries[idx].tag, "maxp", 4);
-		if (!cmp) cache.maxp = ru32(offt->entries[idx].offset);
+		if (!cmp) font->maxp = ru32(offt->entries[idx].offset);
 	} while (cmp < 0 && idx < count && ++idx);
-	return cache;
 }
 
 typedef struct {
@@ -68,15 +66,13 @@ typedef struct {
 	BYTES2 glyphDataFormat;
 } headTbl;
 
-short olt_GLOBAL_unitsPerEm;
-short olt_GLOBAL_indexToLocFormat;
-
-void olt_INTERN_parse_head(void *addr)
+static void olt_INTERN_parse_head(SKR_Font * font)
 {
+	void const * addr = (BYTES1 *) font->data + font->head;
 	headTbl *head = (headTbl *) addr;
-	olt_GLOBAL_unitsPerEm = ru16(head->unitsPerEm);
-	olt_GLOBAL_indexToLocFormat = ri16(head->indexToLocFormat);
-	assert(olt_GLOBAL_indexToLocFormat == 0 || olt_GLOBAL_indexToLocFormat == 1);
+	font->unitsPerEm = ru16(head->unitsPerEm);
+	font->indexToLocFormat = ri16(head->indexToLocFormat);
+	assert(font->indexToLocFormat == 0 || font->indexToLocFormat == 1);
 }
 
 typedef struct {
@@ -97,23 +93,30 @@ typedef struct {
 	BYTES2 maxComponentDepth;
 } maxpTbl;
 
-short olt_GLOBAL_numGlyphs;
-
-void olt_INTERN_parse_maxp(void *addr)
+static void olt_INTERN_parse_maxp(SKR_Font * font)
 {
+	void const * addr = (BYTES1 *) font->data + font->maxp;
 	maxpTbl *maxp = (maxpTbl *) addr;
 	assert(ru32(maxp->version) == 0x00010000);
-	olt_GLOBAL_numGlyphs = ru16(maxp->numGlyphs);
+	font->numGlyphs = ru16(maxp->numGlyphs);
+}
+
+void skrInitializeFont(SKR_Font * font)
+{
+	olt_INTERN_cache_offsets(font);
+	olt_INTERN_parse_head(font);
+	olt_INTERN_parse_maxp(font);
 }
 
 /*
 TODO maybe dedicated offset type
 */
-unsigned long olt_INTERN_get_outline(void *locaAddr, Glyph glyph)
+unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph)
 {
-	int n = olt_GLOBAL_numGlyphs + 1;
+	void const * locaAddr = (BYTES1 *) font->data + font->loca;
+	int n = font->numGlyphs + 1;
 	assert(glyph < n);
-	if (!olt_GLOBAL_indexToLocFormat) {
+	if (!font->indexToLocFormat) {
 		BYTES2 *loca = (BYTES2 *) locaAddr;
 		return (unsigned long) ru16(loca[glyph]) * 2;
 	} else {

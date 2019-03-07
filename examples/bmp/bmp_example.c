@@ -108,18 +108,19 @@ int main(int argc, char const *argv[])
 	FILE *outFile = fopen("demo.bmp", "wb");
 	assert(outFile != NULL);
 
-	OffsetCache offcache = olt_INTERN_cache_offsets(rawData);
-	olt_INTERN_parse_head(rawData + offcache.head);
-	olt_INTERN_parse_maxp(rawData + offcache.maxp);
+	SKR_Font font = {
+		.data = rawData,
+		.length = 0 }; // FIXME
+	skrInitializeFont(&font);
 
-	printf("unitsPerEm: %d\n", olt_GLOBAL_unitsPerEm);
-	printf("numGlyphs: %d\n", olt_GLOBAL_numGlyphs + 1);
+	printf("unitsPerEm: %d\n", font.unitsPerEm);
+	printf("numGlyphs: %d\n", font.numGlyphs + 1);
 
-	unsigned long outlineOffset = olt_INTERN_get_outline(rawData + offcache.loca, glyph);
+	unsigned long outlineOffset = olt_INTERN_get_outline(&font, glyph);
 	printf("outlineOffset[0]: %lu\n", outlineOffset);
 
 	ParsingClue parsingClue;
-	skrExploreOutline(rawData + offcache.glyf + outlineOffset, &parsingClue);
+	skrExploreOutline((BYTES1 *) font.data + font.glyf + outlineOffset, &parsingClue);
 	CurveBuffer curveList = (CurveBuffer) {
 		.space = parsingClue.neededSpace,
 		.count = 0,
@@ -127,7 +128,7 @@ int main(int argc, char const *argv[])
 	skrParseOutline(&parsingClue, &curveList);
 	assert(curveList.space == curveList.count);
 
-	Transform transform = { { 0.5 * WIDTH / olt_GLOBAL_unitsPerEm, 0.5 * HEIGHT / olt_GLOBAL_unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
+	Transform transform = { { 0.5 * WIDTH / font.unitsPerEm, 0.5 * HEIGHT / font.unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 
 	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
 	CurveBuffer tesselStack = {

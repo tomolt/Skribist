@@ -6,36 +6,25 @@
 typedef long Glyph;
 
 typedef struct {
-	unsigned long glyf;
-	unsigned long head;
-	unsigned long loca;
-	unsigned long maxp;
-} OffsetCache;
+	void const * data;
+	unsigned long length;
+	unsigned long glyf, head, loca, maxp;
+	short unitsPerEm, indexToLocFormat, numGlyphs;
+} SKR_Font;
 
-extern short olt_GLOBAL_unitsPerEm;
-extern short olt_GLOBAL_indexToLocFormat;
-extern short olt_GLOBAL_numGlyphs;
+void skrInitializeFont(SKR_Font * font);
+unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph);
 
-OffsetCache olt_INTERN_cache_offsets(void *addr);
-void olt_INTERN_parse_head(void *addr);
-void olt_INTERN_parse_maxp(void *addr);
-unsigned long olt_INTERN_get_outline(void *locaAddr, Glyph glyph);
-
-// Please update glossary when messing with units.
 typedef struct {
-	double x;
-	double y;
+	double x, y;
 } Point;
 
 typedef struct {
-	Point beg;
-	Point end;
+	Point beg, end;
 } Line;
 
 typedef struct {
-	Point beg;
-	Point ctrl;
-	Point end;
+	Point beg, ctrl, end;
 } Curve;
 
 void olt_INTERN_parse_outline(void *addr);
