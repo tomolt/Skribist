@@ -105,7 +105,7 @@ int main(int argc, char const *argv[])
 	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
 	assert(ret == 0);
 
-	FILE *outFile = fopen("demo.bmp", "wb");
+	FILE *outFile = fopen("out.bmp", "wb");
 	assert(outFile != NULL);
 
 	SKR_Font font = {
@@ -127,6 +127,17 @@ int main(int argc, char const *argv[])
 		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
 	skrParseOutline(&parsingClue, &curveList);
 	assert(curveList.space == curveList.count);
+
+	FILE *fOutParse = fopen("out.parse", "w");
+	assert(fOutParse != NULL);
+	fprintf(fOutParse, "# X Y\n");
+	for (int i = 0; i < curveList.count; ++i) {
+		Curve * curve = &curveList.elems[i];
+		fprintf(fOutParse, "%f %f\n", curve->beg.x, curve->beg.y);
+		fprintf(fOutParse, "%f %f\n", curve->ctrl.x, curve->ctrl.y);
+		fprintf(fOutParse, "%f %f\n\n", curve->end.x, curve->end.y);
+	}
+	fclose(fOutParse);
 
 	Transform transform = { { 0.5 * WIDTH / font.unitsPerEm, 0.5 * HEIGHT / font.unitsPerEm }, { WIDTH / 2.0, HEIGHT / 2.0 } };
 

@@ -1,3 +1,4 @@
 Skribist.o
 libSkribist.a
 examples/bmp/bmp_example
+examples/bmp/out.*
