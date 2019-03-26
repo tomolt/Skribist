@@ -82,12 +82,13 @@ typedef struct {
 
 static SKR_Status Parse_head(SKR_Font * font)
 {
+	SKR_Status s = SKR_SUCCESS;
 	void const * addr = (BYTES1 *) font->data + font->head.offset;
 	TTF_head *head = (TTF_head *) addr;
 	font->unitsPerEm = ru16(head->unitsPerEm);
 	font->indexToLocFormat = ri16(head->indexToLocFormat);
-	assert(font->indexToLocFormat == 0 || font->indexToLocFormat == 1); // FIXME
-	return SKR_SUCCESS;
+	s = (indexToLocFormat == 0 || indexToLocFormat == 1);
+	return s;
 }
 
 typedef struct {
@@ -110,11 +111,13 @@ typedef struct {
 
 static SKR_Status Parse_maxp(SKR_Font * font)
 {
+	SKR_Status s = SKR_SUCCESS;
 	void const * addr = (BYTES1 *) font->data + font->maxp.offset;
 	TTF_maxp *maxp = (TTF_maxp *) addr;
-	assert(ru32(maxp->version) == 0x00010000);
+	s = (ru32(maxp->version) == 0x00010000);
+	if (s) return s;
 	font->numGlyphs = ru16(maxp->numGlyphs);
-	return SKR_SUCCESS;
+	return s;
 }
 
 SKR_Status skrInitializeFont(SKR_Font * font)
