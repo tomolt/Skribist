@@ -3,16 +3,30 @@
 
 // depends on stdint.h
 
+/*
+The layout of SKR_Status aligns with posix return value conventions,
+so you can compare it to 0 just as you would with any other posix call.
+*/
+typedef enum {
+	SKR_FAILURE = -1,
+	SKR_SUCCESS
+} SKR_Status;
+
 typedef long Glyph;
+
+typedef struct {
+	unsigned long offset;
+	unsigned long length;
+} SKR_TTF_Table;
 
 typedef struct {
 	void const * data;
 	unsigned long length;
-	unsigned long glyf, head, loca, maxp;
+	SKR_TTF_Table glyf, head, loca, maxp;
 	short unitsPerEm, indexToLocFormat, numGlyphs;
 } SKR_Font;
 
-void skrInitializeFont(SKR_Font * font);
+SKR_Status skrInitializeFont(SKR_Font * font);
 unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph);
 
 typedef struct {

@@ -100,6 +100,7 @@ int main(int argc, char const *argv[])
 	Glyph glyph = atol(argv[1]);
 
 	int ret;
+	SKR_Status s = SKR_SUCCESS;
 
 	unsigned char *rawData;
 	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
@@ -111,7 +112,11 @@ int main(int argc, char const *argv[])
 	SKR_Font font = {
 		.data = rawData,
 		.length = 0 }; // FIXME
-	skrInitializeFont(&font);
+	s = skrInitializeFont(&font);
+	if (s != SKR_SUCCESS) {
+		fprintf(stderr, "Unable to read TTF font file.\n");
+		return EXIT_FAILURE;
+	}
 
 	printf("unitsPerEm: %d\n", font.unitsPerEm);
 	printf("numGlyphs: %d\n", font.numGlyphs + 1);
@@ -120,7 +125,7 @@ int main(int argc, char const *argv[])
 	printf("outlineOffset[0]: %lu\n", outlineOffset);
 
 	ParsingClue parsingClue;
-	skrExploreOutline((BYTES1 *) font.data + font.glyf + outlineOffset, &parsingClue);
+	skrExploreOutline((BYTES1 *) font.data + font.glyf.offset + outlineOffset, &parsingClue);
 	CurveBuffer curveList = (CurveBuffer) {
 		.space = parsingClue.neededSpace,
 		.count = 0,

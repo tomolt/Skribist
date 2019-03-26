@@ -12,7 +12,7 @@ typedef struct {
 	BYTES4 checksum;
 	BYTES4 offset;
 	BYTES4 length;
-} offsetEnt;
+} TTF_OffsetEntry;
 
 typedef struct {
 	BYTES4 scalerType;
@@ -20,30 +20,44 @@ typedef struct {
 	BYTES2 searchRange;
 	BYTES2 entrySelector;
 	BYTES2 rangeShift;
-	offsetEnt entries[];
-} offsetTbl;
+	TTF_OffsetEntry entries[];
+} TFF_OffsetTable;
 
-static void olt_INTERN_cache_offsets(SKR_Font * font)
+static SKR_Status ScanForOffsetEntry(
+	TFF_OffsetTable const * restrict offt,
+	int * restrict cur,
+	char tag[4],
+	SKR_TTF_Table * restrict table)
 {
-	offsetTbl const * offt = (offsetTbl const *) font->data;
 	int count = ru16(offt->numTables);
-	int idx = 0, cmp;
-	do {
-		cmp = SKR_strncmp(offt->entries[idx].tag, "glyf", 4);
-		if (!cmp) font->glyf = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
-	do {
-		cmp = SKR_strncmp(offt->entries[idx].tag, "head", 4);
-		if (!cmp) font->head = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
-	do {
-		cmp = SKR_strncmp(offt->entries[idx].tag, "loca", 4);
-		if (!cmp) font->loca = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
-	do {
-		cmp = SKR_strncmp(offt->entries[idx].tag, "maxp", 4);
-		if (!cmp) font->maxp = ru32(offt->entries[idx].offset);
-	} while (cmp < 0 && idx < count && ++idx);
+	for (;;) {
+		int cmp = SKR_strncmp(offt->entries[*cur].tag, tag, 4);
+		if (!cmp) {
+			table->offset = ru32(offt->entries[*cur].offset);
+			table->length = ru32(offt->entries[*cur].length);
+			return SKR_SUCCESS;
+		} else if (cmp > 0) {
+			return SKR_FAILURE;
+		} else if (!(*cur < count)) {
+			return SKR_FAILURE;
+		}
+		++*cur;
+	}
+}
+
+static SKR_Status ExtractOffsets(SKR_Font * font)
+{
+	SKR_Status s = SKR_SUCCESS;
+	TFF_OffsetTable const * offt = (TFF_OffsetTable const *) font->data;
+	int cur = 0;
+	s = ScanForOffsetEntry(offt, &cur, "glyf", &font->glyf);
+	if (s) return s;
+	s = ScanForOffsetEntry(offt, &cur, "head", &font->head);
+	if (s) return s;
+	s = ScanForOffsetEntry(offt, &cur, "loca", &font->loca);
+	if (s) return s;
+	s = ScanForOffsetEntry(offt, &cur, "maxp", &font->maxp);
+	return s;
 }
 
 typedef struct {
@@ -64,15 +78,16 @@ typedef struct {
 	BYTES2 fontDirectionHint;
 	BYTES2 indexToLocFormat;
 	BYTES2 glyphDataFormat;
-} headTbl;
+} TTF_head;
 
-static void olt_INTERN_parse_head(SKR_Font * font)
+static SKR_Status Parse_head(SKR_Font * font)
 {
-	void const * addr = (BYTES1 *) font->data + font->head;
-	headTbl *head = (headTbl *) addr;
+	void const * addr = (BYTES1 *) font->data + font->head.offset;
+	TTF_head *head = (TTF_head *) addr;
 	font->unitsPerEm = ru16(head->unitsPerEm);
 	font->indexToLocFormat = ri16(head->indexToLocFormat);
-	assert(font->indexToLocFormat == 0 || font->indexToLocFormat == 1);
+	assert(font->indexToLocFormat == 0 || font->indexToLocFormat == 1); // FIXME
+	return SKR_SUCCESS;
 }
 
 typedef struct {
@@ -91,21 +106,26 @@ typedef struct {
 	BYTES2 maxSizeofInstructions;
 	BYTES2 maxComponentElements;
 	BYTES2 maxComponentDepth;
-} maxpTbl;
+} TTF_maxp;
 
-static void olt_INTERN_parse_maxp(SKR_Font * font)
+static SKR_Status Parse_maxp(SKR_Font * font)
 {
-	void const * addr = (BYTES1 *) font->data + font->maxp;
-	maxpTbl *maxp = (maxpTbl *) addr;
+	void const * addr = (BYTES1 *) font->data + font->maxp.offset;
+	TTF_maxp *maxp = (TTF_maxp *) addr;
 	assert(ru32(maxp->version) == 0x00010000);
 	font->numGlyphs = ru16(maxp->numGlyphs);
+	return SKR_SUCCESS;
 }
 
-void skrInitializeFont(SKR_Font * font)
+SKR_Status skrInitializeFont(SKR_Font * font)
 {
-	olt_INTERN_cache_offsets(font);
-	olt_INTERN_parse_head(font);
-	olt_INTERN_parse_maxp(font);
+	SKR_Status s = SKR_SUCCESS;
+	s = ExtractOffsets(font);
+	if (s) return s;
+	s = Parse_head(font);
+	if (s) return s;
+	s = Parse_maxp(font);
+	return s;
 }
 
 /*
@@ -113,7 +133,7 @@ TODO maybe dedicated offset type
 */
 unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph)
 {
-	void const * locaAddr = (BYTES1 *) font->data + font->loca;
+	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
 	int n = font->numGlyphs + 1;
 	assert(glyph < n);
 	if (!font->indexToLocFormat) {
