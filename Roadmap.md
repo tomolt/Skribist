@@ -28,3 +28,8 @@
 - More cmap encodings
 - Utilising GPOS, GSUB, JUSTF tables
 - Optional sub-pixel rendering for LCD screens
+- Ideomatic C++ wrapper
+### Crackpot ideas that may or may not be worth the effort
+- Replacing the entire rasterizer with a new one entirely based on Signed Distance Fields
+- Hinting (huge undertaking, but at least not encumbered by parents anymore)
+- Optional transparent caching layer over the entire API for easy speedups
