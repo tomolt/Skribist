@@ -31,5 +31,5 @@
 - Ideomatic C++ wrapper
 ### Crackpot ideas that may or may not be worth the effort
 - Replacing the entire rasterizer with a new one entirely based on Signed Distance Fields
-- Hinting (huge undertaking, but at least not encumbered by parents anymore)
+- Hinting (huge undertaking, but at least not encumbered by patents anymore)
 - Optional transparent caching layer over the entire API for easy speedups
