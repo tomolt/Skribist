@@ -3,6 +3,8 @@
 - The basics of loading TTF files
 - Loading simple glyph outlines
 - A rasterizer with pixel-perfect anti-aliasing
+- An example program outputting BMP files
+- Sample code to mmap a file on Windows or Unix (in limbo right now)
 ### To be done before v1.0
 - Fix that one 1-pixel discrepancy border glitch
 - Manual array bounds checking in the entire TTF loader
