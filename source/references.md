@@ -7,7 +7,7 @@
 - *CL-VECTORS documentation*, "9. The cl-aa algorithm",<br/>
 	http://projects.tuxee.net/cl-vectors/section-the-cl-aa-algorithm
 - *Ralph Levien*, "Inside the fastest font renderer in the world",<br/>
-	https://medium.com/@raphlinus/inside-the-fastest-font-renderer-in-the-- world-75ae5270c445
+	https://medium.com/@raphlinus/inside-the-fastest-font-renderer-in-the--world-75ae5270c445
 - *Maxim Shemanarev*, "Anti-Grain Geometry - Interpolation with Bezier Curves",<br/>
 	http://www.antigrain.com/research/bezier_interpolation/
 - *Maxim Shemanarev*, "Anti-Grain Geometry - Gamma Correction",<br/>
