@@ -13,6 +13,7 @@
 - Text composing
 - Kerning
 - Output format controllable by a generous list of enums ala OpenGL
+- Gamma Correction
 - General API cleanup
 - Example program with SDL2
 ### Coming after v1.0
