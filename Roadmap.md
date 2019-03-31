@@ -12,6 +12,7 @@
 - cmap
 - Text composing
 - Kerning
+- Output format controllable by a generous list of enums ala OpenGL
 - General API cleanup
 - Example program with SDL2
 ### Coming after v1.0
@@ -25,3 +26,4 @@
 - A subset of the Unicode BiDi Algorithm
 - More cmap encodings
 - Utilising GPOS, GSUB, JUSTF tables
+- Optional sub-pixel rendering for LCD screens
