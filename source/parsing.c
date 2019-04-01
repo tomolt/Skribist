@@ -91,13 +91,13 @@ void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 
 		while (pointIdx <= endPt) {
 			uint8_t flags = *(glyfCursor++);
-			if (flags & SGF_SHORT_X_COORD)
-				xBytes += 1;
-			else if (!(flags & SGF_REUSE_PREV_X))
-				xBytes += 2;
 			unsigned int times = 1;
 			if (flags & SGF_REPEAT_FLAG)
 				times += *(glyfCursor++);
+			if (flags & SGF_SHORT_X_COORD)
+				xBytes += times;
+			else if (!(flags & SGF_REUSE_PREV_X))
+				xBytes += 2 * times;
 			for (unsigned int t = 0; t < times; ++t) {
 				ExtendContourWhilstExploring(&fsm, flags & SGF_ON_CURVE_POINT);
 			}
