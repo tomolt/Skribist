@@ -1,7 +1,7 @@
-typedef uint8_t  BYTES1;
-typedef uint16_t BYTES2;
-typedef uint32_t BYTES4;
-typedef uint64_t BYTES8;
+typedef uint8_t  const BYTES1;
+typedef uint16_t const BYTES2;
+typedef uint32_t const BYTES4;
+typedef uint64_t const BYTES8;
 
 static inline uint16_t ru16(BYTES2 raw)
 {

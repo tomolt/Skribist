@@ -68,24 +68,24 @@ static void fmt_le_dword(char *buf, uint32_t v)
 	buf[3] = v >> 24 & 0xFF;
 }
 
-static void write_bmp(SKR_Image image, FILE *outFile)
+static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 {
 	char hdr[54] = { 0 };
 	// Header
 	hdr[0] = 'B';
 	hdr[1] = 'M';
-	fmt_le_dword(&hdr[2], 54 + 3 * image.width * image.height); // size of file
+	fmt_le_dword(&hdr[2], 54 + 3 * dim.width * dim.height); // size of file
 	hdr[10] = 54; // offset to image data
 	// InfoHeader
 	hdr[14] = 40; // size of InfoHeader
-	fmt_le_dword(&hdr[18], image.width);
-	fmt_le_dword(&hdr[22], image.height);
+	fmt_le_dword(&hdr[18], dim.width);
+	fmt_le_dword(&hdr[22], dim.height);
 	hdr[26] = 1; // color planes
 	hdr[28] = 24; // bpp
 	fwrite(hdr, 1, 54, outFile);
-	for (int y = 0; y < image.height; ++y) {
-		for (int x = 0; x < image.width; ++x) {
-			unsigned char c = image.data[image.stride * y + x];
+	for (int y = 0; y < dim.height; ++y) {
+		for (int x = 0; x < dim.width; ++x) {
+			unsigned char c = image[dim.width * y + x];
 			fputc(c, outFile); // r
 			fputc(c, outFile); // g
 			fputc(c, outFile); // b
@@ -121,41 +121,22 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	printf("unitsPerEm: %d\n", font.unitsPerEm);
-	printf("numGlyphs: %d\n", font.numGlyphs + 1);
+	BYTES1 const * outline = skrGetOutlineAddr(&font, glyph);
 
-	unsigned long outlineOffset = olt_INTERN_get_outline(&font, glyph);
-	printf("outlineOffset[0]: %lu\n", outlineOffset);
-
-	SKR_Rect rect = skrGetOutlineBounds((BYTES1 *) font.data + font.glyf.offset + outlineOffset);
-
-	printf("Rect: %f %f %f %f\n", rect.xMin, rect.yMin, rect.xMax, rect.yMax);
+	SKR_Rect rect = skrGetOutlineBounds(outline);
 
 	Transform transform = {
 		{ 64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm },
 		{ 64.0, 64.0 } };
-	long width  = ceil(rect.xMax * transform.scale.x + transform.move.x);
-	long height = ceil(rect.yMax * transform.scale.y + transform.move.y);
 
 	ParsingClue parsingClue;
-	skrExploreOutline((BYTES1 *) font.data + font.glyf.offset + outlineOffset, &parsingClue);
+	skrExploreOutline(outline, &parsingClue);
 	CurveBuffer curveList = (CurveBuffer) {
 		.space = parsingClue.neededSpace,
 		.count = 0,
 		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
 	skrParseOutline(&parsingClue, &curveList);
 	assert(curveList.space == curveList.count);
-
-	FILE *fOutParse = fopen("out.parse", "w");
-	assert(fOutParse != NULL);
-	fprintf(fOutParse, "# X Y\n");
-	for (int i = 0; i < curveList.count; ++i) {
-		Curve * curve = &curveList.elems[i];
-		fprintf(fOutParse, "%f %f\n", curve->beg.x, curve->beg.y);
-		fprintf(fOutParse, "%f %f\n", curve->ctrl.x, curve->ctrl.y);
-		fprintf(fOutParse, "%f %f\n\n", curve->end.x, curve->end.y);
-	}
-	fclose(fOutParse);
 
 	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
 	CurveBuffer tesselStack = {
@@ -167,19 +148,19 @@ int main(int argc, char const *argv[])
 		.count = 0,
 		.elems = malloc(1000 * sizeof(Line)) };
 
-	RasterCell * rasterData = calloc(width * height, sizeof(RasterCell));
-	SKR_Raster raster = { .width = width, .height = height, .data = rasterData };
-
-	unsigned char * imageData = calloc(width * height, sizeof(unsigned char));
-	SKR_Image image = { .width = width, .height = height, .stride = width, .data = imageData };
+	SKR_Dimensions dim = {
+		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
+		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
+	RasterCell * raster = calloc(dim.width * dim.height, sizeof(RasterCell));
+	unsigned char * image = calloc(dim.width * dim.height, sizeof(unsigned char));
 
 	skrBeginTesselating(&curveList, transform, &tesselStack);
 	skrContinueTesselating(&tesselStack, 0.5, &lineList);
 
-	skrRasterizeLines(&lineList, raster);
+	skrRasterizeLines(&lineList, raster, dim);
+	skrCastImage(raster, image, dim);
 
-	olt_INTERN_gather(raster, image);
-	write_bmp(image, outFile);
+	write_bmp(image, outFile, dim);
 
 	fclose(outFile);
 

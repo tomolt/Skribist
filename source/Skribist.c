@@ -14,6 +14,27 @@ C standard headers - we can use these even if we don't link with the standard li
 #include "reading.c" // FIXME
 #include "Skribist.h"
 
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#define clamp(v, l, h) min(max((v), (l)), (h))
+
+#define sign(x) ((x) >= 0 ? 1 : -1)
+
+static int CompareStrings(char const * a, char const * b, long n)
+{
+	for (long i = 0; i < n; ++i) {
+		if (a[i] != b[i])
+			return a[i] - b[i];
+	}
+	return 0;
+}
+
 static Point Midpoint(Point a, Point b)
 {
 	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
@@ -21,7 +42,6 @@ static Point Midpoint(Point a, Point b)
 	return (Point) { x, y };
 }
 
-#include "casting.c"
 #include "header.c"
 #include "parsing.c"
 #include "rasterizing.c"

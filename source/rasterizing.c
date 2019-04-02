@@ -1,14 +1,4 @@
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
-
-static void RasterizeDot(Point beg, Point end, SKR_Raster dest)
+static void RasterizeDot(Point beg, Point end, RasterCell * dest, long stride)
 {
 	// quantized beg & end coordinates
 	long qbx = round(beg.x * 127.0);
@@ -27,7 +17,7 @@ static void RasterizeDot(Point beg, Point end, SKR_Raster dest)
 	int fex = qex - qcx;
 	int fey = qey - qcy;
 
-	RasterCell * cell = &dest.data[dest.width * py + px];
+	RasterCell * cell = &dest[stride * py + px];
 
 	int winding = sign(fey - fby);
 	int cover = abs(fey - fby); // in the range 0 - 127
@@ -38,15 +28,13 @@ static void RasterizeDot(Point beg, Point end, SKR_Raster dest)
 }
 
 /*
-
 RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
 Its algorithm is actually fairly simple: It computes the exact intervals at
 which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
-
 */
 
-static void RasterizeLine(Line line, SKR_Raster dest)
+static void RasterizeLine(Line line, RasterCell * dest, long stride)
 {
 	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
 
@@ -96,20 +84,52 @@ static void RasterizeLine(Line line, SKR_Raster dest)
 		pt.x = line.beg.x + t * diff.x;
 		pt.y = line.beg.y + t * diff.y;
 
-		RasterizeDot(prev_pt, pt, dest);
+		RasterizeDot(prev_pt, pt, dest, stride);
 
 		prev_t = t;
 		prev_pt = pt;
 	}
 
-	RasterizeDot(prev_pt, line.end, dest);
+	RasterizeDot(prev_pt, line.end, dest, stride);
 }
 
 void skrRasterizeLines(
 	LineBuffer const * source,
-	SKR_Raster dest)
+	RasterCell * dest,
+	SKR_Dimensions dim)
 {
 	for (int i = 0; i < source->count; ++i) {
-		RasterizeLine(source->elems[i], dest);
+		RasterizeLine(source->elems[i], dest, dim.width);
 	}
 }
+
+/*
+skrCastImage() right now is mostly a stub. Further on in development it should
+also do conversion to user-specified pixel formats, simple color fill,
+gamma correction and sub-pixel rendering (if enabled).
+*/
+
+void skrCastImage(
+	RasterCell const * source,
+	unsigned char * dest,
+	SKR_Dimensions dim)
+{
+	for (long r = 0; r < dim.height; ++r) {
+		long acc = 0; // in the range -127 - 127
+		for (long c = 0; c < dim.width; ++c) {
+			RasterCell const * cell = &source[dim.width * r + c];
+			int windingAndCover = cell->windingAndCover, area = cell->area;
+			assert(windingAndCover >= -127 && windingAndCover <= 127);
+			assert(area >= 0 && area <= 254);
+			int value = acc + windingAndCover * area / 254; // in the range -127 - 127
+			assert(value >= -127 && value <= 127);
+			int scaledValue = value * 255 / 127; // in the range -255 - 255
+			assert(scaledValue >= -255 && scaledValue <= 255);
+			// TODO use standardized winding direction to obviate the need for this abs()
+			dest[dim.width * r + c] = abs(scaledValue);
+			acc += windingAndCover;
+		}
+		assert(acc == 0);
+	}
+}
+

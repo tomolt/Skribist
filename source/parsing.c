@@ -21,7 +21,24 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
-SKR_Rect skrGetOutlineBounds(BYTES1 const * glyfEntry)
+// TODO GetOutlineRange instead
+BYTES1 const * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph)
+{
+	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
+	int n = font->numGlyphs + 1;
+	assert(glyph < n);
+	unsigned long offset;
+	if (!font->indexToLocFormat) {
+		BYTES2 * loca = (BYTES2 *) locaAddr;
+		offset = 2 * (unsigned long) ru16(loca[glyph]);
+	} else {
+		BYTES4 * loca = (BYTES4 *) locaAddr;
+		offset = ru32(loca[glyph]);
+	}
+	return (BYTES1 *) font->data + font->glyf.offset + offset;
+}
+
+SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry)
 {
 	ShHdr const * sh = (ShHdr const *) glyfEntry;
 	return (SKR_Rect) {
@@ -70,7 +87,7 @@ static void ExtendContourWhilstExploring(ExploringFSM * fsm, int onCurve)
 
 void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 {
-	BYTES1 *glyfCursor = glyfEntry;
+	BYTES1 * glyfCursor = glyfEntry;
 	ParsingClue clue = { 0 };
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
@@ -78,7 +95,7 @@ void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 	assert(clue.numContours >= 0);
 	glyfCursor += 10;
 
-	BYTES2 *endPts = (BYTES2 *) glyfCursor;
+	BYTES2 * endPts = (BYTES2 *) glyfCursor;
 	clue.endPts = endPts;
 	glyfCursor += 2 * clue.numContours;
 

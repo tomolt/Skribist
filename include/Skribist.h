@@ -27,7 +27,6 @@ typedef struct {
 } SKR_Font;
 
 SKR_Status skrInitializeFont(SKR_Font * font);
-unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph);
 
 typedef struct {
 	double x, y;
@@ -44,8 +43,6 @@ typedef struct {
 typedef struct {
 	Point beg, ctrl, end;
 } Curve;
-
-void olt_INTERN_parse_outline(void *addr);
 
 /*
 The transformation order goes: first scale, then move.
@@ -71,14 +68,14 @@ typedef struct {
 
 typedef struct {
 	long width, height;
-	RasterCell * data;
-} SKR_Raster;
+} SKR_Dimensions;
 
+#if 0
 typedef struct {
-	// TODO format
-	long width, height, stride;
-	unsigned char * data;
-} SKR_Image;
+	// SKR_Format format;
+	long stride;
+} SKR_ImageInfo;
+#endif
 
 /*
 All information resulting from the
@@ -93,7 +90,8 @@ typedef struct {
 	int neededSpace;
 } ParsingClue;
 
-SKR_Rect skrGetOutlineBounds(BYTES1 const * glyfEntry);
+BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
+SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
 void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination);
 void skrParseOutline(ParsingClue * clue, CurveBuffer * destination);
 
@@ -104,8 +102,12 @@ void skrContinueTesselating(CurveBuffer *stack,
 
 void skrRasterizeLines(
 	LineBuffer const * source,
-	SKR_Raster dest);
+	RasterCell * dest,
+	SKR_Dimensions dim);
 
-void olt_INTERN_gather(SKR_Raster raster, SKR_Image image);
+void skrCastImage(
+	RasterCell const * source,
+	unsigned char * dest,
+	SKR_Dimensions dim);
 
 #endif

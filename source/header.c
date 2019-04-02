@@ -1,12 +1,3 @@
-static int SKR_strncmp(char const * a, char const * b, long n)
-{
-	for (long i = 0; i < n; ++i) {
-		if (a[i] != b[i])
-			return a[i] - b[i];
-	}
-	return 0;
-}
-
 typedef struct {
 	char tag[4];
 	BYTES4 checksum;
@@ -31,7 +22,7 @@ static SKR_Status ScanForOffsetEntry(
 {
 	int count = ru16(offt->numTables);
 	for (;;) {
-		int cmp = SKR_strncmp(offt->entries[*cur].tag, tag, 4);
+		int cmp = CompareStrings(offt->entries[*cur].tag, tag, 4);
 		if (!cmp) {
 			table->offset = ru32(offt->entries[*cur].offset);
 			table->length = ru32(offt->entries[*cur].length);
@@ -127,21 +118,4 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 	if (s) return s;
 	s = Parse_maxp(font);
 	return s;
-}
-
-/*
-TODO maybe dedicated offset type
-*/
-unsigned long olt_INTERN_get_outline(SKR_Font const * font, Glyph glyph)
-{
-	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
-	int n = font->numGlyphs + 1;
-	assert(glyph < n);
-	if (!font->indexToLocFormat) {
-		BYTES2 *loca = (BYTES2 *) locaAddr;
-		return (unsigned long) ru16(loca[glyph]) * 2;
-	} else {
-		BYTES4 *loca = (BYTES4 *) locaAddr;
-		return ru32(loca[glyph]);
-	}
 }
