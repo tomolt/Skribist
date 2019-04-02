@@ -124,15 +124,18 @@ int main(int argc, char const *argv[])
 	printf("unitsPerEm: %d\n", font.unitsPerEm);
 	printf("numGlyphs: %d\n", font.numGlyphs + 1);
 
-	long width = 256, height = 256;
-	Transform transform = {
-		{ 0.5 * width / font.unitsPerEm, 0.5 * height / font.unitsPerEm },
-		{ width / 2.0, height / 2.0 } };
-
 	unsigned long outlineOffset = olt_INTERN_get_outline(&font, glyph);
 	printf("outlineOffset[0]: %lu\n", outlineOffset);
 
-	// SKR_Rect rect = skrGetOutlineBounds((BYTES1 *) font.data + font.glyf.offset + outlineOffset);
+	SKR_Rect rect = skrGetOutlineBounds((BYTES1 *) font.data + font.glyf.offset + outlineOffset);
+
+	printf("Rect: %f %f %f %f\n", rect.xMin, rect.yMin, rect.xMax, rect.yMax);
+
+	Transform transform = {
+		{ 64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm },
+		{ 64.0, 64.0 } };
+	long width  = ceil(rect.xMax * transform.scale.x + transform.move.x);
+	long height = ceil(rect.yMax * transform.scale.y + transform.move.y);
 
 	ParsingClue parsingClue;
 	skrExploreOutline((BYTES1 *) font.data + font.glyf.offset + outlineOffset, &parsingClue);
@@ -164,8 +167,8 @@ int main(int argc, char const *argv[])
 		.count = 0,
 		.elems = malloc(1000 * sizeof(Line)) };
 
-	RasterCell * rasterCells = calloc(width * height, sizeof(RasterCell));
-	SKR_Raster raster = { .width = width, .height = height, .data = rasterCells };
+	RasterCell * rasterData = calloc(width * height, sizeof(RasterCell));
+	SKR_Raster raster = { .width = width, .height = height, .data = rasterData };
 
 	unsigned char * imageData = calloc(width * height, sizeof(unsigned char));
 	SKR_Image image = { .width = width, .height = height, .stride = width, .data = imageData };
