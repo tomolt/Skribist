@@ -22,7 +22,7 @@ typedef struct {
 typedef struct {
 	void const * data;
 	unsigned long length;
-	SKR_TTF_Table glyf, head, loca, maxp;
+	SKR_TTF_Table cmap, glyf, head, loca, maxp;
 	short unitsPerEm, indexToLocFormat, numGlyphs;
 } SKR_Font;
 
@@ -94,6 +94,7 @@ BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
 SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
 void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination);
 void skrParseOutline(ParsingClue * clue, CurveBuffer * destination);
+SKR_Status skrLoadCMap(BYTES1 * addr);
 
 void skrBeginTesselating(CurveBuffer const *source,
 	Transform transform, CurveBuffer *stack);

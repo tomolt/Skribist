@@ -126,6 +126,12 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
+	s = skrLoadCMap((BYTES1 *) font.data + font.cmap.offset);
+	if (s != SKR_SUCCESS) {
+		fprintf(stderr, "Unsupported cmap format / encoding.\n");
+		return EXIT_FAILURE;
+	}
+
 	BYTES1 * outline = skrGetOutlineAddr(&font, glyph);
 
 	SKR_Rect rect = skrGetOutlineBounds(outline);

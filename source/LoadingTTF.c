@@ -41,6 +41,8 @@ static SKR_Status ExtractOffsets(SKR_Font * font)
 	SKR_Status s = SKR_SUCCESS;
 	TFF_OffsetTable const * offt = (TFF_OffsetTable const *) font->data;
 	int cur = 0;
+	s = ScanForOffsetEntry(offt, &cur, "cmap", &font->cmap);
+	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "glyf", &font->glyf);
 	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "head", &font->head);
@@ -379,4 +381,69 @@ void skrParseOutline(ParsingClue * clue, CurveBuffer * destination)
 		// Close the loop - but don't update relative origin point
 		ExtendContourWhilstParsing(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT);
 	}
+}
+
+// -------- cmap table --------
+
+typedef struct {
+	BYTES2 platformID;
+	BYTES2 encodingID;
+	BYTES4 offset;
+} TTF_EncodingRecord;
+
+typedef struct {
+	BYTES2 version;
+	BYTES2 numTables;
+	TTF_EncodingRecord encodingRecords[];
+} TTF_cmap;
+
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+	BYTES1 glyphIdArray[256];
+} TTF_Format0;
+
+typedef enum {
+	ENC_MACINTOSH,
+	ENC_WINDOWS_BMP
+} Encoding;
+
+#include <stdio.h> // TEMP
+
+SKR_Status skrLoadCMap(BYTES1 * addr)
+{
+	TTF_cmap * cmap = (TTF_cmap *) addr;
+	uint16_t version = ru16(cmap->version);
+	if (version != 0) return SKR_FAILURE;
+	uint16_t numTables = ru16(cmap->numTables);
+	for (uint16_t t = 0; t < numTables; ++t) {
+		TTF_EncodingRecord * rec = &cmap->encodingRecords[t];
+		Encoding encoding;
+		uint16_t platformID = ru16(rec->platformID);
+		uint16_t encodingID = ru16(rec->encodingID);
+		if (platformID == 1 && encodingID == 0) {
+			encoding = ENC_MACINTOSH;
+		} else if (platformID == 3 && encodingID == 1) {
+			encoding = ENC_WINDOWS_BMP;
+		} else {
+			continue;
+		}
+		uint16_t offset = ru32(rec->offset);
+		uint16_t format = ru16(*(addr + offset));
+		if (format == 0) {
+			TTF_Format0 * fmt0 = (TTF_Format0 *) (addr + offset);
+			uint16_t length = ru16(fmt0->length);
+			printf("length: %d\n", length);
+			uint16_t language = ru16(fmt0->language);
+			printf("language: %d\n", language);
+			for (int c = 0; c < 256; ++c) {
+				Glyph glyph = fmt0->glyphIdArray[c];
+				printf("#%02x ('%c') -> %ld\n", c, c, glyph);
+			}
+		} else {
+			continue;
+		}
+	}
+	return SKR_SUCCESS;
 }
