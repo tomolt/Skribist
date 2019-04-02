@@ -47,9 +47,6 @@ typedef struct {
 
 void olt_INTERN_parse_outline(void *addr);
 
-#define WIDTH 256
-#define HEIGHT 256
-
 /*
 The transformation order goes: first scale, then move.
 */
