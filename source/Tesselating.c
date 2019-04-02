@@ -35,7 +35,7 @@ static Curve TransformCurve(Curve curve, Transform trf)
 void skrBeginTesselating(CurveBuffer const *source,
 	Transform transform, CurveBuffer *stack)
 {
-	assert(stack->space >= source->count);
+	SKR_assert(stack->space >= source->count);
 	for (int i = 0; i < source->count; ++i) {
 		Curve curve = TransformCurve(source->elems[i], transform);
 		stack->elems[stack->count] = curve;
@@ -50,12 +50,12 @@ void skrContinueTesselating(CurveBuffer *stack, double flatness, LineBuffer *des
 		--stack->count;
 		Curve curve = stack->elems[stack->count];
 		if (IsFlat(curve, flatness)) {
-			assert(dest->space >= dest->count + 1);
+			SKR_assert(dest->space >= dest->count + 1);
 			Line line = { curve.beg, curve.end };
 			dest->elems[dest->count] = line;
 			++dest->count;
 		} else {
-			assert(stack->space >= stack->count + 2);
+			SKR_assert(stack->space >= stack->count + 2);
 			SplitCurve(curve, &stack->elems[stack->count]);
 			stack->count += 2;
 		}

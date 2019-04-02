@@ -11,8 +11,10 @@ C standard headers - we can use these even if we don't link with the standard li
 */
 #include <stdint.h>
 
-#include "reading.c" // FIXME
+#include "Reading.c" // FIXME
 #include "Skribist.h"
+
+#define SKR_assert(stmt) assert(stmt)
 
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -42,7 +44,6 @@ static Point Midpoint(Point a, Point b)
 	return (Point) { x, y };
 }
 
-#include "header.c"
-#include "parsing.c"
-#include "rasterizing.c"
-#include "tesselation.c"
+#include "LoadingTTF.c"
+#include "Rasterizing.c"
+#include "Tesselating.c"

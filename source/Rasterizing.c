@@ -119,17 +119,17 @@ void skrCastImage(
 		for (long c = 0; c < dim.width; ++c) {
 			RasterCell const * cell = &source[dim.width * r + c];
 			int windingAndCover = cell->windingAndCover, area = cell->area;
-			assert(windingAndCover >= -127 && windingAndCover <= 127);
-			assert(area >= 0 && area <= 254);
+			SKR_assert(windingAndCover >= -127 && windingAndCover <= 127);
+			SKR_assert(area >= 0 && area <= 254);
 			int value = acc + windingAndCover * area / 254; // in the range -127 - 127
-			assert(value >= -127 && value <= 127);
+			SKR_assert(value >= -127 && value <= 127);
 			int scaledValue = value * 255 / 127; // in the range -255 - 255
-			assert(scaledValue >= -255 && scaledValue <= 255);
+			SKR_assert(scaledValue >= -255 && scaledValue <= 255);
 			// TODO use standardized winding direction to obviate the need for this abs()
 			dest[dim.width * r + c] = abs(scaledValue);
 			acc += windingAndCover;
 		}
-		assert(acc == 0);
+		SKR_assert(acc == 0);
 	}
 }
 

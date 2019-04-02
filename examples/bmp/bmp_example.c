@@ -27,7 +27,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdint.h>
 
-#include "../../source/reading.c" // FIXME remove this dependency
+#include "../../source/Reading.c" // FIXME remove this dependency
 #include "Skribist.h"
 
 #include <stdio.h>
