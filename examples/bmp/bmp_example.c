@@ -32,7 +32,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <math.h>
 
 static int read_file(char const *filename, void **addr)
@@ -107,10 +106,16 @@ int main(int argc, char const *argv[])
 
 	unsigned char *rawData;
 	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
-	assert(ret == 0);
+	if (ret != 0) {
+		fprintf(stderr, "Unable to open TTF font file.\n");
+		return EXIT_FAILURE;
+	}
 
 	FILE *outFile = fopen("out.bmp", "wb");
-	assert(outFile != NULL);
+	if (outFile == NULL) {
+		fprintf(stderr, "Unable to open output BMP file.\n");
+		return EXIT_FAILURE;
+	}
 
 	SKR_Font font = {
 		.data = rawData,
@@ -121,7 +126,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	BYTES1 const * outline = skrGetOutlineAddr(&font, glyph);
+	BYTES1 * outline = skrGetOutlineAddr(&font, glyph);
 
 	SKR_Rect rect = skrGetOutlineBounds(outline);
 
@@ -136,7 +141,7 @@ int main(int argc, char const *argv[])
 		.count = 0,
 		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
 	skrParseOutline(&parsingClue, &curveList);
-	assert(curveList.space == curveList.count);
+	// assert(curveList.space == curveList.count);
 
 	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
 	CurveBuffer tesselStack = {
