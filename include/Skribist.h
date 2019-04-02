@@ -34,6 +34,10 @@ typedef struct {
 } Point;
 
 typedef struct {
+	double xMin, yMin, xMax, yMax;
+} SKR_Rect;
+
+typedef struct {
 	Point beg, end;
 } Line;
 
@@ -68,15 +72,16 @@ typedef struct {
 	uint8_t area; // in the range 0 - 254
 } RasterCell;
 
-#if 0
 typedef struct {
-	SkrFormat format;
-	long width;
-	long height;
-	long stride;
-	void *data;
-} SkrImage;
-#endif
+	long width, height;
+	RasterCell * data;
+} SKR_Raster;
+
+typedef struct {
+	// TODO format
+	long width, height, stride;
+	unsigned char * data;
+} SKR_Image;
 
 /*
 All information resulting from the
@@ -91,9 +96,7 @@ typedef struct {
 	int neededSpace;
 } ParsingClue;
 
-extern RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
-extern uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
-
+SKR_Rect skrGetOutlineBounds(BYTES1 const * glyfEntry);
 void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination);
 void skrParseOutline(ParsingClue * clue, CurveBuffer * destination);
 
@@ -102,8 +105,10 @@ void skrBeginTesselating(CurveBuffer const *source,
 void skrContinueTesselating(CurveBuffer *stack,
 	double flatness, LineBuffer *dest);
 
-void skrRasterizeLines(LineBuffer const *source);
+void skrRasterizeLines(
+	LineBuffer const * source,
+	SKR_Raster dest);
 
-void olt_INTERN_gather(void);
+void olt_INTERN_gather(SKR_Raster raster, SKR_Image image);
 
 #endif

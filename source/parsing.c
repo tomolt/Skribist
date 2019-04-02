@@ -21,6 +21,14 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
+SKR_Rect skrGetOutlineBounds(BYTES1 const * glyfEntry)
+{
+	ShHdr const * sh = (ShHdr const *) glyfEntry;
+	return (SKR_Rect) {
+		ri16(sh->xMin), ri16(sh->yMin),
+		ri16(sh->xMax), ri16(sh->yMax) };
+}
+
 /*
 
 By the design of TrueType it's not possible to parse an outline in a single pass.

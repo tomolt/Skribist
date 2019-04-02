@@ -8,10 +8,7 @@
 
 #define sign(x) ((x) >= 0.0 ? 1.0 : -1.0)
 
-RasterCell olt_GLOBAL_raster[WIDTH * HEIGHT];
-uint8_t olt_GLOBAL_image[WIDTH * HEIGHT];
-
-static void RasterizeDot(Point beg, Point end)
+static void RasterizeDot(Point beg, Point end, SKR_Raster dest)
 {
 	// quantized beg & end coordinates
 	long qbx = round(beg.x * 127.0);
@@ -30,7 +27,7 @@ static void RasterizeDot(Point beg, Point end)
 	int fex = qex - qcx;
 	int fey = qey - qcy;
 
-	RasterCell *cell = &olt_GLOBAL_raster[WIDTH * py + px];
+	RasterCell * cell = &dest.data[dest.width * py + px];
 
 	int winding = sign(fey - fby);
 	int cover = abs(fey - fby); // in the range 0 - 127
@@ -49,7 +46,7 @@ orders them based on the variable scalar in the line equation.
 
 */
 
-static void RasterizeLine(Line line)
+static void RasterizeLine(Line line, SKR_Raster dest)
 {
 	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
 
@@ -99,18 +96,20 @@ static void RasterizeLine(Line line)
 		pt.x = line.beg.x + t * diff.x;
 		pt.y = line.beg.y + t * diff.y;
 
-		RasterizeDot(prev_pt, pt);
+		RasterizeDot(prev_pt, pt, dest);
 
 		prev_t = t;
 		prev_pt = pt;
 	}
 
-	RasterizeDot(prev_pt, line.end);
+	RasterizeDot(prev_pt, line.end, dest);
 }
 
-void skrRasterizeLines(LineBuffer const *source)
+void skrRasterizeLines(
+	LineBuffer const * source,
+	SKR_Raster dest)
 {
 	for (int i = 0; i < source->count; ++i) {
-		RasterizeLine(source->elems[i]);
+		RasterizeLine(source->elems[i], dest);
 	}
 }

@@ -18,13 +18,13 @@ gamma correction and sub-pixel rendering (if enabled).
 
 #include <stdio.h> // For debug only
 
-void olt_INTERN_gather(void)
+void olt_INTERN_gather(SKR_Raster raster, SKR_Image image)
 {
-	for (int r = 0; r < HEIGHT; ++r) {
+	assert(raster.width == image.width && raster.height == image.height);
+	for (int r = 0; r < raster.height; ++r) {
 		long acc = 0; // in the range -127 - 127
-		for (int c = 0; c < WIDTH; ++c) {
-			int i = WIDTH * r + c;
-			RasterCell *cell = &olt_GLOBAL_raster[i];
+		for (int c = 0; c < raster.width; ++c) {
+			RasterCell * cell = &raster.data[raster.width * r + c];
 			int windingAndCover = cell->windingAndCover, area = cell->area;
 			assert(windingAndCover >= -127 && windingAndCover <= 127);
 			assert(area >= 0 && area <= 254);
@@ -33,7 +33,7 @@ void olt_INTERN_gather(void)
 			int scaledValue = value * 255 / 127; // in the range -255 - 255
 			assert(scaledValue >= -255 && scaledValue <= 255);
 			// TODO use standardized winding direction to obviate the need for this abs()
-			olt_GLOBAL_image[i] = abs(scaledValue);
+			image.data[image.stride * r + c] = abs(scaledValue);
 			acc += windingAndCover;
 		}
 		assert(acc == 0);
