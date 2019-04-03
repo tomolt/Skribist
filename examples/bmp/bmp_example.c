@@ -34,6 +34,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 #include <math.h>
 
+#include <assert.h>
+
 static int read_file(char const *filename, void **addr)
 {
 	FILE *file = fopen(filename, "rw");
@@ -59,7 +61,7 @@ static int read_file(char const *filename, void **addr)
 	return 0;
 }
 
-static void fmt_le_dword(char *buf, uint32_t v)
+static void fmt_le_dword(unsigned char *buf, uint32_t v)
 {
 	buf[0] = v & 0xFF;
 	buf[1] = v >> 8 & 0xFF;
@@ -69,11 +71,13 @@ static void fmt_le_dword(char *buf, uint32_t v)
 
 static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 {
-	char hdr[54] = { 0 };
+	int padPerLine = (4 - 3 * dim.width % 4) % 4;
+	assert((3 * dim.width + padPerLine) % 4 == 0);
+	unsigned char hdr[54] = { 0 };
 	// Header
 	hdr[0] = 'B';
 	hdr[1] = 'M';
-	fmt_le_dword(&hdr[2], 54 + 3 * dim.width * dim.height); // size of file
+	fmt_le_dword(&hdr[2], 54 + (3 * dim.width + padPerLine) * dim.height); // size of file
 	hdr[10] = 54; // offset to image data
 	// InfoHeader
 	hdr[14] = 40; // size of InfoHeader
@@ -88,6 +92,10 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 			fputc(c, outFile); // r
 			fputc(c, outFile); // g
 			fputc(c, outFile); // b
+		}
+		// padding the scanline!
+		for (int p = 0; p < padPerLine; ++p) {
+			fputc(0, outFile);
 		}
 	}
 }
@@ -161,7 +169,7 @@ int main(int argc, char const *argv[])
 		.count = 0,
 		.elems = malloc(1000 * sizeof(Line)) };
 
-#if 0
+#if 1
 	SKR_Dimensions dim = {
 		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
 		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
