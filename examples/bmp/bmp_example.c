@@ -126,11 +126,13 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
+#if 0
 	s = skrLoadCMap((BYTES1 *) font.data + font.cmap.offset);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "Unsupported cmap format / encoding.\n");
 		return EXIT_FAILURE;
 	}
+#endif
 
 	BYTES1 * outline = skrGetOutlineAddr(&font, glyph);
 
@@ -159,9 +161,13 @@ int main(int argc, char const *argv[])
 		.count = 0,
 		.elems = malloc(1000 * sizeof(Line)) };
 
+#if 0
 	SKR_Dimensions dim = {
 		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
 		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
+#else
+	SKR_Dimensions dim = { 128, 128 };
+#endif
 	RasterCell * raster = calloc(dim.width * dim.height, sizeof(RasterCell));
 	unsigned char * image = calloc(dim.width * dim.height, sizeof(unsigned char));
 

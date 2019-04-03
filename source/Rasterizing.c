@@ -8,23 +8,24 @@ static void RasterizeDot(Point beg, Point end, RasterCell * dest, long stride)
 	// pixel coordinates
 	int px = min(qbx, qex) / 127;
 	int py = min(qby, qey) / 127;
-	// quantized corner coordinates
-	long qcx = px * 127;
-	long qcy = py * 127;
 	// fractional beg & end coordinates
-	int fbx = qbx - qcx;
-	int fby = qby - qcy;
-	int fex = qex - qcx;
-	int fey = qey - qcy;
+	int fbx = qbx - px * 127;
+	int fby = qby - py * 127;
+	int fex = qex - px * 127;
+	int fey = qey - py * 127;
 
 	RasterCell * cell = &dest[stride * py + px];
 
 	int winding = sign(fey - fby);
 	int cover = abs(fey - fby); // in the range 0 - 127
+	SKR_assert(cover >= 0);
 	cell->windingAndCover += winding * cover; // in the range -127 - 127
 
-	// TODO clamp
-	cell->area += abs(fex - fbx) + 254 - 2 * max(fex, fbx); // in the range 0 - 254
+	int addArea = abs(fex - fbx) + 254 - 2 * max(fex, fbx);
+	SKR_assert(addArea >= 0);
+	int prevArea = cell->area;
+	cell->area += addArea; // in the range 0 - 254
+	SKR_assert(prevArea + addArea == cell->area);
 }
 
 /*
@@ -103,6 +104,21 @@ void skrRasterizeLines(
 	}
 }
 
+#include <math.h> // TODO get rid of
+
+// TODO take monitor gamma i guess?
+static int LinearToGamma(int linear)
+{
+	double L = linear / 255.0;
+	double S;
+	if (L <= 0.0031308) {
+		S = L * 12.92;
+	} else {
+		S = 1.055 * pow(L, 1/2.4) - 0.055;
+	}
+	return round(S * 255.0);
+}
+
 /*
 skrCastImage() right now is mostly a stub. Further on in development it should
 also do conversion to user-specified pixel formats, simple color fill,
@@ -125,8 +141,10 @@ void skrCastImage(
 			SKR_assert(value >= -127 && value <= 127);
 			int scaledValue = value * 255 / 127; // in the range -255 - 255
 			SKR_assert(scaledValue >= -255 && scaledValue <= 255);
-			// TODO use standardized winding direction to obviate the need for this abs()
-			dest[dim.width * r + c] = abs(scaledValue);
+			int linearValue = max(scaledValue, 0);
+			int gammaValue = LinearToGamma(linearValue);
+			// TODO check for integer overflow!
+			dest[dim.width * r + c] = gammaValue;
 			acc += windingAndCover;
 		}
 		SKR_assert(acc == 0);
