@@ -62,8 +62,7 @@ typedef struct {
 } LineBuffer;
 
 typedef struct {
-	int8_t windingAndCover; // in the range -127 - 127
-	uint8_t area; // in the range 0 - 254
+	long edgeValue, tailValue;
 } RasterCell;
 
 typedef struct {
