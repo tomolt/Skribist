@@ -155,7 +155,8 @@ int main(int argc, char const *argv[])
 	RasterCell * raster = calloc(dims.width * dims.height, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
-	skrDrawOutline(&font, glyph, transform, raster, dims);
+	s = skrDrawOutline(&font, glyph, transform, raster, dims);
+	// TODO error handling
 
 	skrCastImage(raster, image, dims);
 

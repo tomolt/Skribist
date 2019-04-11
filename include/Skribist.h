@@ -112,7 +112,7 @@ typedef struct {
 
 BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
 SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
-void skrDrawOutline(SKR_Font const * font, Glyph glyph,
+SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	Transform transform, RasterCell * raster, SKR_Dimensions dims);
 SKR_Status skrLoadCMap(BYTES1 * addr);
 

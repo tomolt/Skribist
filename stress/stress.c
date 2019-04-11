@@ -45,9 +45,11 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, Transform transform
 	RasterCell * raster = calloc(dims.width * dims.height, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
-	skrDrawOutline(font, glyph, transform, raster, dims);
+	SKR_Status s = skrDrawOutline(font, glyph, transform, raster, dims);
 
-	skrCastImage(raster, image, dims);
+	if (!s) {
+		skrCastImage(raster, image, dims);
+	}
 
 	free(raster);
 	free(image);

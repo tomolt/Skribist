@@ -334,15 +334,16 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 	}
 }
 
-void skrDrawOutline(SKR_Font const * font, Glyph glyph,
+SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
+	SKR_Status s;
 	BYTES1 * outlineAddr = skrGetOutlineAddr(font, glyph);
 	OutlineIntel intel = { 0 };
-	// FIXME proper error handling
-	if (ScoutOutline(outlineAddr, &intel) == SKR_SUCCESS) {
-		DrawOutlineWithIntel(&intel, transform, raster, dims);
-	}
+	s = ScoutOutline(outlineAddr, &intel);
+	if (s) return s;
+	DrawOutlineWithIntel(&intel, transform, raster, dims);
+	return SKR_SUCCESS;
 }
 
 // -------- cmap table --------
