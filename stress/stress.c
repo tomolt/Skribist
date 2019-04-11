@@ -79,12 +79,14 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	for (double size = 6.0; size <= 48.0; size += 2.0) {
-		for (Glyph glyph = 0; glyph < 500; ++glyph) {
-			Transform transform = {
-				{ size / font.unitsPerEm, size / font.unitsPerEm },
-				{ 64.0, 64.0 } };
-			draw_outline(&font, glyph, transform);
+	for (int i = 0; i < 10; ++i) {
+		for (double size = 6.0; size <= 48.0; size += 2.0) {
+			for (Glyph glyph = 0; glyph < 500; ++glyph) {
+				Transform transform = {
+					{ size / font.unitsPerEm, size / font.unitsPerEm },
+					{ 64.0, 64.0 } };
+				draw_outline(&font, glyph, transform);
+			}
 		}
 	}
 
