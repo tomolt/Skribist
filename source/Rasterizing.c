@@ -104,16 +104,24 @@ static void DrawScaledLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 #include <math.h> // TODO get rid of
 
 // TODO take monitor gamma i guess?
-static int LinearToGamma(int linear)
+static double CalcLinearToGamma(double L)
 {
-	double L = linear / 255.0;
 	double S;
 	if (L <= 0.0031308) {
 		S = L * 12.92;
 	} else {
-		S = 1.055 * pow(L, 1/2.4) - 0.055;
+		S = 1.055 * pow(L, 1.0 / 2.2) - 0.055;
 	}
-	return round(S * 255.0);
+	return S;
+}
+
+static unsigned char LinearToGamma[1025];
+
+void skrInitializeLibrary(void)
+{
+	for (int i = 0; i <= 1024; ++i) {
+		LinearToGamma[i] = round(CalcLinearToGamma(i / 1024.0) * 255.0);
+	}
 }
 
 void skrCastImage(
@@ -127,13 +135,12 @@ void skrCastImage(
 			RasterCell const * cell = &source[dim.width * r + c];
 			int edgeValue = cell->edgeValue, tailValue = cell->tailValue;
 			int value = acc + edgeValue;
-			int scaledValue = value * 255 / 1024;
-			int linearValue = max(scaledValue, 0);
-			int gammaValue = LinearToGamma(linearValue);
+			int linearValue = clamp(value, 0, 1024);
+			int gammaValue = LinearToGamma[linearValue];
 			dest[dim.width * r + c] = gammaValue;
 			acc += tailValue;
 		}
-		// SKR_assert(acc == 0);
+		SKR_assert(acc == 0);
 	}
 }
 

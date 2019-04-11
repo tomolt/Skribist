@@ -110,6 +110,8 @@ typedef struct {
 } DrawingArgs;
 #endif
 
+void skrInitializeLibrary(void);
+
 BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
 SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
 SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,

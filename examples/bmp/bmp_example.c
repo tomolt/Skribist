@@ -125,6 +125,8 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
+	skrInitializeLibrary();
+
 	SKR_Font font = {
 		.data = rawData,
 		.length = 0 }; // FIXME
