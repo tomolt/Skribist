@@ -166,8 +166,8 @@ SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry)
 {
 	ShHdr const * sh = (ShHdr const *) glyfEntry;
 	return (SKR_Rect) {
-		ri16(sh->xMin), ri16(sh->yMin),
-		ri16(sh->xMax), ri16(sh->yMax) };
+		ri16(sh->xMin) + 1, ri16(sh->yMin) + 1,
+		ri16(sh->xMax) + 1, ri16(sh->yMax) + 1 };
 }
 
 /*

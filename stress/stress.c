@@ -75,7 +75,7 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	for (double size = 2.0; size <= 256.0; size *= 2.0) {
+	for (double size = 6.0; size <= 48.0; size += 2.0) {
 		for (Glyph glyph = 0; glyph < 100; ++glyph) {
 			Transform transform = {
 				{ size / font.unitsPerEm, size / font.unitsPerEm },

@@ -16,7 +16,7 @@ build_examples() {
 }
 
 build_stress() {
-	$CC $CFLAGS stress/stress.c -o stress/stress -Iinclude libSkribist.a -lm -pg
+	$CC $CFLAGS stress/stress.c -o stress/stress -Iinclude libSkribist.a -lm
 }
 
 build_all() {

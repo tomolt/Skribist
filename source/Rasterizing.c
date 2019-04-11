@@ -1,4 +1,4 @@
-static void RasterizeDot(Point beg, Point end, RasterCell * dest, long stride)
+static void RasterizeDot(Point beg, Point end, RasterCell * dest, SKR_Dimensions dims)
 {
 	// quantized beg & end coordinates
 	long qbx = round(beg.x * 1024.0);
@@ -14,7 +14,10 @@ static void RasterizeDot(Point beg, Point end, RasterCell * dest, long stride)
 	long fex = qex - px * 1024;
 	long fey = qey - py * 1024;
 
-	RasterCell * cell = &dest[stride * py + px];
+	SKR_assert(px >= 0 && px < dims.width);
+	SKR_assert(py >= 0 && py < dims.height);
+
+	RasterCell * cell = &dest[dims.width * py + px];
 
 	long tailValue = fey - fby; // winding * cover
 	long area = labs(fex - fbx) / 2 + 1024 - max(fex, fbx);
@@ -31,7 +34,7 @@ which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
 */
 
-static void RasterizeLine(Line line, RasterCell * dest, long stride)
+static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 {
 	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
 
@@ -81,18 +84,21 @@ static void RasterizeLine(Line line, RasterCell * dest, long stride)
 		pt.x = line.beg.x + t * diff.x;
 		pt.y = line.beg.y + t * diff.y;
 
-		RasterizeDot(prev_pt, pt, dest, stride);
+		RasterizeDot(prev_pt, pt, dest, dims);
 
 		prev_t = t;
 		prev_pt = pt;
 	}
 
-	RasterizeDot(prev_pt, line.end, dest, stride);
+	// TODO reevaluate the need for the condition
+	if (!(prev_pt.x == line.end.x && prev_pt.y == line.end.y)) {
+		RasterizeDot(prev_pt, line.end, dest, dims);
+	}
 }
 
 static void DrawScaledLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 {
-	RasterizeLine(line, dest, dims.width);
+	RasterizeLine(line, dest, dims);
 }
 
 #include <math.h> // TODO get rid of
@@ -127,7 +133,7 @@ void skrCastImage(
 			dest[dim.width * r + c] = gammaValue;
 			acc += tailValue;
 		}
-		SKR_assert(acc == 0);
+		// SKR_assert(acc == 0);
 	}
 }
 
