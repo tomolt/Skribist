@@ -2,3 +2,6 @@ Skribist.o
 libSkribist.a
 examples/bmp/bmp_example
 examples/bmp/out.*
+stress/stress
+stress/gmon.out
+stress/stress.stats
