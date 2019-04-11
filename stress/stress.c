@@ -76,7 +76,7 @@ int main()
 	}
 
 	for (double size = 6.0; size <= 48.0; size += 2.0) {
-		for (Glyph glyph = 0; glyph < 100; ++glyph) {
+		for (Glyph glyph = 0; glyph < 500; ++glyph) {
 			Transform transform = {
 				{ size / font.unitsPerEm, size / font.unitsPerEm },
 				{ 64.0, 64.0 } };
