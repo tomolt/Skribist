@@ -90,14 +90,9 @@ static void RasterizeLine(Line line, RasterCell * dest, long stride)
 	RasterizeDot(prev_pt, line.end, dest, stride);
 }
 
-void skrRasterizeLines(
-	LineBuffer const * source,
-	RasterCell * dest,
-	SKR_Dimensions dim)
+static void DrawScaledLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 {
-	for (int i = 0; i < source->count; ++i) {
-		RasterizeLine(source->elems[i], dest, dim.width);
-	}
+	RasterizeLine(line, dest, dims.width);
 }
 
 #include <math.h> // TODO get rid of

@@ -173,70 +173,33 @@ SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry)
 /*
 
 By the design of TrueType it's not possible to parse an outline in a single pass.
-So instead, we run an 'explore' phase before the actual parsing stage.
+So instead, we run a 'scouting' phase before the actual loading stage.
 
 */
 
-typedef struct {
-	unsigned int state, neededSpace;
-} ExploringFSM;
-
-static void ExtendContourWhilstExploring(ExploringFSM * fsm, int onCurve)
+void ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * intel)
 {
-	switch (fsm->state) {
-	case 0:
-		SKR_assert(onCurve);
-		fsm->state = 1;
-		break;
-	case 1:
-		if (onCurve) {
-			++fsm->neededSpace;
-			break;
-		} else {
-			fsm->state = 2;
-			break;
-		}
-	case 2:
-		if (onCurve) {
-			++fsm->neededSpace;
-			fsm->state = 1;
-			break;
-		} else {
-			++fsm->neededSpace;
-			break;
-		}
-	default: SKR_assert(0);
-	}
-}
-
-void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
-{
-	BYTES1 * glyfCursor = glyfEntry;
-	ParsingClue clue = { 0 };
+	BYTES1 * glyfCursor = outlineAddr;
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
-	clue.numContours = ri16(sh->numContours);
-	SKR_assert(clue.numContours >= 0);
+	intel->numContours = ri16(sh->numContours);
+	SKR_assert(intel->numContours >= 0);
 	glyfCursor += 10;
 
 	BYTES2 * endPts = (BYTES2 *) glyfCursor;
-	clue.endPts = endPts;
-	glyfCursor += 2 * clue.numContours;
+	intel->endPts = endPts;
+	glyfCursor += 2 * intel->numContours;
 
 	int instrLength = ri16(*(BYTES2 *) glyfCursor);
 	glyfCursor += 2 + instrLength;
 
-	clue.flagsPtr = glyfCursor;
+	intel->flagsPtr = glyfCursor;
 
 	unsigned long xBytes = 0;
 	int pointIdx = 0;
 
-	ExploringFSM fsm = { 0, 0 };
-
-	for (int c = 0; c < clue.numContours; ++c) {
-		int endPt = ru16(clue.endPts[c]);
-
-		fsm.state = 0;
+	for (int c = 0; c < intel->numContours; ++c) {
+		int endPt = ru16(intel->endPts[c]);
 
 		while (pointIdx <= endPt) {
 			uint8_t flags = *(glyfCursor++);
@@ -247,22 +210,12 @@ void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 				xBytes += times;
 			else if (!(flags & SGF_REUSE_PREV_X))
 				xBytes += 2 * times;
-			for (unsigned int t = 0; t < times; ++t) {
-				ExtendContourWhilstExploring(&fsm, flags & SGF_ON_CURVE_POINT);
-			}
 			pointIdx += times;
 		}
-
-		// Close the loop
-		ExtendContourWhilstExploring(&fsm, SGF_ON_CURVE_POINT);
 	}
 
-	clue.neededSpace = fsm.neededSpace;
-
-	clue.xPtr = glyfCursor;
-	clue.yPtr = glyfCursor + xBytes;
-
-	*destination = clue;
+	intel->xPtr = glyfCursor;
+	intel->yPtr = glyfCursor + xBytes;
 }
 
 /*
@@ -270,19 +223,11 @@ void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination)
 When we find a new point, we can't generally output a new curve for it right away.
 Instead, we have to buffer them up until we can construct a valid curve.
 Because of the complicated packing scheme used in TrueType, this is somewhat
-complicated. ExtendContourWhilstExploring() implements this using a simple finite state machine.
+complicated. ExtendContour() implements this using a simple finite state machine.
 
 */
 
-typedef struct {
-	unsigned int state;
-	Point queuedStart;
-	Point queuedPivot;
-	Point looseEnd;
-	CurveBuffer * dest;
-} ParsingFSM;
-
-static void ExtendContourWhilstParsing(ParsingFSM * fsm, Point newNode, int onCurve)
+static void ExtendContour(ContourFSM * fsm, Point newNode, int onCurve)
 {
 	switch (fsm->state) {
 	case 0:
@@ -293,9 +238,8 @@ static void ExtendContourWhilstParsing(ParsingFSM * fsm, Point newNode, int onCu
 		break;
 	case 1:
 		if (onCurve) {
-			Point pivot = Midpoint(fsm->queuedStart, newNode);
-			Curve curve = { fsm->queuedStart, pivot, newNode };
-			fsm->dest->elems[fsm->dest->count++] = curve;
+			Line line = { fsm->queuedStart, newNode };
+			DrawLine(line, fsm->transform, fsm->raster, fsm->dims);
 			fsm->queuedStart = newNode;
 			break;
 		} else {
@@ -306,14 +250,14 @@ static void ExtendContourWhilstParsing(ParsingFSM * fsm, Point newNode, int onCu
 	case 2:
 		if (onCurve) {
 			Curve curve = { fsm->queuedStart, fsm->queuedPivot, newNode };
-			fsm->dest->elems[fsm->dest->count++] = curve;
+			DrawCurve(curve, fsm->transform, fsm->raster, fsm->dims);
 			fsm->queuedStart = newNode;
 			fsm->state = 1;
 			break;
 		} else {
 			Point implicit = Midpoint(fsm->queuedPivot, newNode);
 			Curve curve = { fsm->queuedStart, fsm->queuedPivot, implicit };
-			fsm->dest->elems[fsm->dest->count++] = curve;
+			DrawCurve(curve, fsm->transform, fsm->raster, fsm->dims);
 			fsm->queuedStart = implicit;
 			fsm->queuedPivot = newNode;
 			break;
@@ -349,29 +293,34 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 	return co;
 }
 
-void skrParseOutline(ParsingClue * clue, CurveBuffer * destination)
+static void DrawOutlineWithIntel(OutlineIntel * intel,
+	Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
 
-	ParsingFSM fsm = { 0, { 0.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, destination };
+	ContourFSM fsm = { 0 };
+	fsm.transform = transform;
+	fsm.raster = raster;
+	fsm.dims = dims;
 
-	for (int c = 0; c < clue->numContours; ++c) {
-		int endPt = ru16(clue->endPts[c]);
+	for (int c = 0; c < intel->numContours; ++c) {
+		int endPt = ru16(intel->endPts[c]);
 
 		fsm.state = 0;
 
 		while (pointIdx <= endPt) {
-			BYTES1 flags = *(clue->flagsPtr++);
+			BYTES1 flags = *(intel->flagsPtr++);
 
 			unsigned int times = 1;
 			if (flags & SGF_REPEAT_FLAG)
-				times += *(clue->flagsPtr++);
+				times += *(intel->flagsPtr++);
 
 			do {
-				long x = GetCoordinateAndAdvance(flags, &clue->xPtr, prevX);
-				long y = GetCoordinateAndAdvance(flags >> 1, &clue->yPtr, prevY);
-				ExtendContourWhilstParsing(&fsm, (Point) { x, y }, flags & SGF_ON_CURVE_POINT);
+				long x = GetCoordinateAndAdvance(flags, &intel->xPtr, prevX);
+				long y = GetCoordinateAndAdvance(flags >> 1, &intel->yPtr, prevY);
+				// TODO apply transforms here to simplify everything!
+				ExtendContour(&fsm, (Point) { x, y }, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;
@@ -379,8 +328,17 @@ void skrParseOutline(ParsingClue * clue, CurveBuffer * destination)
 		}
 
 		// Close the loop - but don't update relative origin point
-		ExtendContourWhilstParsing(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT);
+		ExtendContour(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT);
 	}
+}
+
+void skrDrawOutline(SKR_Font const * font, Glyph glyph,
+	Transform transform, RasterCell * raster, SKR_Dimensions dims)
+{
+	BYTES1 * outlineAddr = skrGetOutlineAddr(font, glyph);
+	OutlineIntel intel = { 0 };
+	ScoutOutline(outlineAddr, &intel);
+	DrawOutlineWithIntel(&intel, transform, raster, dims);
 }
 
 // -------- cmap table --------

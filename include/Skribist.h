@@ -78,7 +78,7 @@ typedef struct {
 
 /*
 All information resulting from the
-exploration pass.
+scouting pass.
 */
 typedef struct {
 	int numContours;
@@ -86,13 +86,34 @@ typedef struct {
 	BYTES1 * flagsPtr;
 	BYTES1 * xPtr;
 	BYTES1 * yPtr;
-	int neededSpace;
-} ParsingClue;
+} OutlineIntel;
+
+typedef struct {
+	unsigned int state;
+	Point queuedStart;
+	Point queuedPivot;
+	Point looseEnd;
+
+	Transform transform;
+	RasterCell * raster;
+	SKR_Dimensions dims;
+} ContourFSM;
+
+#if 0
+typedef struct {
+	BYTES1 * outlineAddr;
+	OutlineIntel outlineIntel;
+	ContourFSM contourFsm;
+	Transform transform;
+	SKR_Dimensions dimensions;
+	RasterCell * raster;
+} DrawingArgs;
+#endif
 
 BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
 SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
-void skrExploreOutline(BYTES1 * glyfEntry, ParsingClue * destination);
-void skrParseOutline(ParsingClue * clue, CurveBuffer * destination);
+void skrDrawOutline(SKR_Font const * font, Glyph glyph,
+	Transform transform, RasterCell * raster, SKR_Dimensions dims);
 SKR_Status skrLoadCMap(BYTES1 * addr);
 
 void skrBeginTesselating(CurveBuffer const *source,

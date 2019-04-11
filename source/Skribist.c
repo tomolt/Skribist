@@ -44,6 +44,6 @@ static Point Midpoint(Point a, Point b)
 	return (Point) { x, y };
 }
 
-#include "LoadingTTF.c"
 #include "Rasterizing.c"
 #include "Tesselating.c"
+#include "LoadingTTF.c"

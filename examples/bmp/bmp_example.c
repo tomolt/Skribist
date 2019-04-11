@@ -142,50 +142,24 @@ int main(int argc, char const *argv[])
 	}
 #endif
 
-	BYTES1 * outline = skrGetOutlineAddr(&font, glyph);
-
-	SKR_Rect rect = skrGetOutlineBounds(outline);
+	SKR_Rect rect = skrGetOutlineBounds(skrGetOutlineAddr(&font, glyph));
 
 	Transform transform = {
 		{ 64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm },
 		{ 64.0, 64.0 } };
 
-	ParsingClue parsingClue;
-	skrExploreOutline(outline, &parsingClue);
-	CurveBuffer curveList = (CurveBuffer) {
-		.space = parsingClue.neededSpace,
-		.count = 0,
-		.elems = calloc(parsingClue.neededSpace, sizeof(Curve)) };
-	skrParseOutline(&parsingClue, &curveList);
-	// assert(curveList.space == curveList.count);
-
-	// TODO API cleanup; Parser output should maybe even be directly used as the tessel stack.
-	CurveBuffer tesselStack = {
-		.space = 1000,
-		.count = 0,
-		.elems = malloc(1000 * sizeof(Curve)) };
-	LineBuffer lineList = {
-		.space = 1000,
-		.count = 0,
-		.elems = malloc(1000 * sizeof(Line)) };
-
-#if 1
-	SKR_Dimensions dim = {
+	SKR_Dimensions dims = {
 		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
 		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
-#else
-	SKR_Dimensions dim = { 128, 128 };
-#endif
-	RasterCell * raster = calloc(dim.width * dim.height, sizeof(RasterCell));
-	unsigned char * image = calloc(dim.width * dim.height, sizeof(unsigned char));
 
-	skrBeginTesselating(&curveList, transform, &tesselStack);
-	skrContinueTesselating(&tesselStack, 0.5, &lineList);
+	RasterCell * raster = calloc(dims.width * dims.height, sizeof(RasterCell));
+	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
-	skrRasterizeLines(&lineList, raster, dim);
-	skrCastImage(raster, image, dim);
+	skrDrawOutline(&font, glyph, transform, raster, dims);
 
-	write_bmp(image, outFile, dim);
+	skrCastImage(raster, image, dims);
+
+	write_bmp(image, outFile, dims);
 
 	fclose(outFile);
 

@@ -19,11 +19,29 @@ static void SplitCurve(Curve curve, Curve segments[2])
 	segments[1] = (Curve) { pivot, ctrl1, curve.end };
 }
 
+static void DrawScaledCurve(Curve curve, RasterCell * dest, SKR_Dimensions dims)
+{
+	if (IsFlat(curve, 0.5)) {
+		Line line = { curve.beg, curve.end };
+		DrawScaledLine(line, dest, dims);
+	} else {
+		Curve segments[2];
+		SplitCurve(curve, segments);
+		DrawScaledCurve(segments[0], dest, dims);
+		DrawScaledCurve(segments[1], dest, dims);
+	}
+}
+
 static Point TransformPoint(Point point, Transform trf)
 {
 	return (Point) {
 		point.x * trf.scale.x + trf.move.x,
 		point.y * trf.scale.y + trf.move.y };
+}
+
+static Line TransformLine(Line line, Transform trf)
+{
+	return (Line) { TransformPoint(line.beg, trf), TransformPoint(line.end, trf) };
 }
 
 static Curve TransformCurve(Curve curve, Transform trf)
@@ -32,32 +50,14 @@ static Curve TransformCurve(Curve curve, Transform trf)
 		TransformPoint(curve.ctrl, trf), TransformPoint(curve.end, trf) };
 }
 
-void skrBeginTesselating(CurveBuffer const *source,
-	Transform transform, CurveBuffer *stack)
+static void DrawLine(Line line, Transform trf, RasterCell * raster, SKR_Dimensions dims)
 {
-	SKR_assert(stack->space >= source->count);
-	for (int i = 0; i < source->count; ++i) {
-		Curve curve = TransformCurve(source->elems[i], transform);
-		stack->elems[stack->count] = curve;
-		++stack->count;
-	}
+	Line scaledLine = TransformLine(line, trf);
+	DrawScaledLine(scaledLine, raster, dims);
 }
 
-void skrContinueTesselating(CurveBuffer *stack, double flatness, LineBuffer *dest)
+static void DrawCurve(Curve curve, Transform trf, RasterCell * raster, SKR_Dimensions dims)
 {
-	// TODO only pop curve from stack *after* testing for space. Needed to make this reentrant.
-	while (stack->count > 0) {
-		--stack->count;
-		Curve curve = stack->elems[stack->count];
-		if (IsFlat(curve, flatness)) {
-			SKR_assert(dest->space >= dest->count + 1);
-			Line line = { curve.beg, curve.end };
-			dest->elems[dest->count] = line;
-			++dest->count;
-		} else {
-			SKR_assert(stack->space >= stack->count + 2);
-			SplitCurve(curve, &stack->elems[stack->count]);
-			stack->count += 2;
-		}
-	}
+	Curve scaledCurve = TransformCurve(curve, trf);
+	DrawScaledCurve(scaledCurve, raster, dims);
 }
