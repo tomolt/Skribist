@@ -123,14 +123,9 @@ void skrBeginTesselating(CurveBuffer const *source,
 void skrContinueTesselating(CurveBuffer *stack,
 	double flatness, LineBuffer *dest);
 
-void skrRasterizeLines(
-	LineBuffer const * source,
-	RasterCell * dest,
-	SKR_Dimensions dim);
-
 void skrCastImage(
-	RasterCell const * source,
-	unsigned char * dest,
+	RasterCell const * restrict source,
+	unsigned char * restrict dest,
 	SKR_Dimensions dim);
 
 #endif

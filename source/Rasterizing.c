@@ -125,22 +125,24 @@ void skrInitializeLibrary(void)
 }
 
 void skrCastImage(
-	RasterCell const * source,
-	unsigned char * dest,
+	RasterCell const * restrict source,
+	unsigned char * restrict dest,
 	SKR_Dimensions dim)
 {
 	for (long r = 0; r < dim.height; ++r) {
-		long acc = 0;
+		long accumulator = 0;
 		for (long c = 0; c < dim.width; ++c) {
-			RasterCell const * cell = &source[dim.width * r + c];
-			int edgeValue = cell->edgeValue, tailValue = cell->tailValue;
-			int value = acc + edgeValue;
+			long idx = dim.width * r + c;
+
+			int edgeValue = source[idx].edgeValue;
+			int value = accumulator + edgeValue;
 			int linearValue = clamp(value, 0, 1024);
 			int gammaValue = LinearToGamma[linearValue];
-			dest[dim.width * r + c] = gammaValue;
-			acc += tailValue;
+			dest[idx] = gammaValue;
+
+			int tailValue = source[idx].tailValue;
+			accumulator += tailValue;
 		}
-		SKR_assert(acc == 0);
+		SKR_assert(accumulator == 0);
 	}
 }
-
