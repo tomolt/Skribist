@@ -21,6 +21,10 @@ static void SplitCurve(Curve curve, Curve segments[2])
 
 static void DrawScaledCurve(Curve curve, RasterCell * dest, SKR_Dimensions dims)
 {
+	/*
+	TODO replace recursion here with iteration over an explicit stack.
+	This is to prevent stack overflows from occuring when drawing large text.
+	*/
 	if (IsFlat(curve, 0.5)) {
 		Line line = { curve.beg, curve.end };
 		DrawScaledLine(line, dest, dims);

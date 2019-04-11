@@ -161,6 +161,9 @@ int main(int argc, char const *argv[])
 
 	write_bmp(image, outFile, dims);
 
+	free(raster);
+	free(image);
+
 	fclose(outFile);
 
 	free(rawData);

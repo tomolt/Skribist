@@ -15,9 +15,14 @@ build_examples() {
 	$CC $CFLAGS examples/bmp/bmp_example.c -o examples/bmp/bmp_example -Iinclude libSkribist.a -lm
 }
 
+build_stress() {
+	$CC $CFLAGS stress/stress.c -o stress/stress -Iinclude libSkribist.a -lm
+}
+
 build_all() {
 	build_Skribist
 	build_examples
+	build_stress
 }
 
 time build_all

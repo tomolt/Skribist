@@ -177,13 +177,13 @@ So instead, we run a 'scouting' phase before the actual loading stage.
 
 */
 
-void ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * intel)
+SKR_Status ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * intel)
 {
 	BYTES1 * glyfCursor = outlineAddr;
 
 	ShHdr *sh = (ShHdr *) glyfCursor;
 	intel->numContours = ri16(sh->numContours);
-	SKR_assert(intel->numContours >= 0);
+	if (intel->numContours < 0) return SKR_FAILURE;
 	glyfCursor += 10;
 
 	BYTES2 * endPts = (BYTES2 *) glyfCursor;
@@ -216,6 +216,8 @@ void ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * intel)
 
 	intel->xPtr = glyfCursor;
 	intel->yPtr = glyfCursor + xBytes;
+
+	return SKR_SUCCESS;
 }
 
 /*
@@ -337,8 +339,10 @@ void skrDrawOutline(SKR_Font const * font, Glyph glyph,
 {
 	BYTES1 * outlineAddr = skrGetOutlineAddr(font, glyph);
 	OutlineIntel intel = { 0 };
-	ScoutOutline(outlineAddr, &intel);
-	DrawOutlineWithIntel(&intel, transform, raster, dims);
+	// FIXME proper error handling
+	if (ScoutOutline(outlineAddr, &intel) == SKR_SUCCESS) {
+		DrawOutlineWithIntel(&intel, transform, raster, dims);
+	}
 }
 
 // -------- cmap table --------
