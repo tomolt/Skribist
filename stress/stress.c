@@ -80,7 +80,7 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 100; ++i) {
 		for (double size = 6.0; size <= 48.0; size += 2.0) {
 			for (Glyph glyph = 0; glyph < 500; ++glyph) {
 				Transform transform = {
