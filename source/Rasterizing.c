@@ -131,6 +131,8 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims)
 
 #include <string.h> // TODO get rid of this dependency
 
+#include <emmintrin.h>
+
 void skrCastImage(
 	RasterCell const * restrict source,
 	unsigned char * restrict dest,
@@ -138,28 +140,33 @@ void skrCastImage(
 {
 	for (long row = 0; row < (dims.height + 7) / 8; ++row) {
 
-		long accumulators[8] = { 0 };
+		__m128i accumulators = _mm_setzero_si128();
 
 		for (long col = 0; col < dims.width; ++col) {
 
-			short edgeValues[8], tailValues[8];
-			memcpy(edgeValues, source[row * dims.width + col].edgeValues, sizeof(edgeValues));
-			memcpy(tailValues, source[row * dims.width + col].tailValues, sizeof(tailValues));
+			long cellIdx = row * dims.width + col;
+			__m128i edgeValues = _mm_loadu_si128(
+				(__m128i const *) source[cellIdx].edgeValues);
+			__m128i tailValues = _mm_loadu_si128(
+				(__m128i const *) source[cellIdx].tailValues);
 
+			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
+			__m128i linearValues = _mm_min_epi16(_mm_max_epi16(values,
+				_mm_setzero_si128()), _mm_set1_epi16(1024));
+			// TODO gamma correction
+			__m128i gammaValues = _mm_srai_epi16(linearValues, 2);
+			gammaValues = _mm_min_epi16(gammaValues, _mm_set1_epi16(255));
+
+			accumulators = _mm_adds_epi16(accumulators, tailValues);
+
+			short pixels[8];
+			_mm_storeu_si128((__m128i *) pixels, gammaValues);
 			for (int q = 0; q < 8; ++q) {
-				int value = accumulators[q] + edgeValues[q];
-				int linearValue = clamp(value, 0, 1024);
-				// TODO gamma correction
-				int gammaValue = linearValue * 255 / 1024;
 				if (row * 8 + q < dims.height) {
-					dest[(row * 8 + q) * dims.width + col] = gammaValue;
+					dest[(row * 8 + q) * dims.width + col] = pixels[q];
 				}
-
-				accumulators[q] += tailValues[q];
 			}
 		}
-		for (int q = 0; q < 8; ++q) {
-			SKR_assert(accumulators[q] == 0);
-		}
+		// TODO assertion
 	}
 }
