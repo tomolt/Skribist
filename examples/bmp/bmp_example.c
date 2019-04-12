@@ -158,7 +158,10 @@ int main(int argc, char const *argv[])
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
 	s = skrDrawOutline(&font, glyph, transform, raster, dims);
-	// TODO error handling
+	if (s != SKR_SUCCESS) {
+		fprintf(stderr, "This type of outline is not implemented yet.\n");
+		return EXIT_FAILURE;
+	}
 
 	skrCastImage(raster, image, dims);
 

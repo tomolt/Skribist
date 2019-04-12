@@ -1,3 +1,10 @@
+static Point TransformPoint(Point point, Transform trf)
+{
+	return (Point) {
+		point.x * trf.scale.x + trf.move.x,
+		point.y * trf.scale.y + trf.move.y };
+}
+
 typedef struct {
 	char tag[4];
 	BYTES4 checksum;
@@ -241,7 +248,7 @@ static void ExtendContour(ContourFSM * fsm, Point newNode, int onCurve)
 	case 1:
 		if (onCurve) {
 			Line line = { fsm->queuedStart, newNode };
-			DrawLine(line, fsm->transform, fsm->raster, fsm->dims);
+			DrawLine(line, fsm->raster, fsm->dims);
 			fsm->queuedStart = newNode;
 			break;
 		} else {
@@ -252,14 +259,14 @@ static void ExtendContour(ContourFSM * fsm, Point newNode, int onCurve)
 	case 2:
 		if (onCurve) {
 			Curve curve = { fsm->queuedStart, fsm->queuedPivot, newNode };
-			DrawCurve(curve, fsm->transform, fsm->raster, fsm->dims);
+			DrawCurve(curve, fsm->raster, fsm->dims);
 			fsm->queuedStart = newNode;
 			fsm->state = 1;
 			break;
 		} else {
 			Point implicit = Midpoint(fsm->queuedPivot, newNode);
 			Curve curve = { fsm->queuedStart, fsm->queuedPivot, implicit };
-			DrawCurve(curve, fsm->transform, fsm->raster, fsm->dims);
+			DrawCurve(curve, fsm->raster, fsm->dims);
 			fsm->queuedStart = implicit;
 			fsm->queuedPivot = newNode;
 			break;
@@ -302,7 +309,6 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 	long prevX = 0, prevY = 0;
 
 	ContourFSM fsm = { 0 };
-	fsm.transform = transform;
 	fsm.raster = raster;
 	fsm.dims = dims;
 
@@ -321,8 +327,8 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 			do {
 				long x = GetCoordinateAndAdvance(flags, &intel->xPtr, prevX);
 				long y = GetCoordinateAndAdvance(flags >> 1, &intel->yPtr, prevY);
-				// TODO apply transforms here to simplify everything!
-				ExtendContour(&fsm, (Point) { x, y }, flags & SGF_ON_CURVE_POINT);
+				Point point = TransformPoint((Point) { x, y }, transform);
+				ExtendContour(&fsm, point, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;

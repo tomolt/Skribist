@@ -94,7 +94,6 @@ typedef struct {
 	Point queuedPivot;
 	Point looseEnd;
 
-	Transform transform;
 	RasterCell * raster;
 	SKR_Dimensions dims;
 } ContourFSM;

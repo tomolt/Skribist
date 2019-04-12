@@ -96,7 +96,7 @@ static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 	}
 }
 
-static void DrawScaledLine(Line line, RasterCell * dest, SKR_Dimensions dims)
+static void DrawLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 {
 	RasterizeLine(line, dest, dims);
 }
