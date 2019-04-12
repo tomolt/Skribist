@@ -17,14 +17,14 @@ static void RasterizeDot(Point beg, Point end, RasterCell * dest, SKR_Dimensions
 	SKR_assert(px >= 0 && px < dims.width);
 	SKR_assert(py >= 0 && py < dims.height);
 
-	RasterCell * cell = &dest[dims.width * py + px];
-
 	long tailValue = fey - fby; // winding * cover
 	long area = labs(fex - fbx) / 2 + 1024 - max(fex, fbx);
 	long edgeValue = tailValue * area / 1024;
 
-	cell->tailValue += tailValue;
-	cell->edgeValue += edgeValue;
+	RasterCell * cell = &dest[dims.width * (py / 8) + px];
+
+	cell->tailValues[py % 8] += tailValue;
+	cell->edgeValues[py % 8] += edgeValue;
 }
 
 /*
@@ -124,25 +124,42 @@ void skrInitializeLibrary(void)
 	}
 }
 
+unsigned long skrCalcCellCount(SKR_Dimensions dims)
+{
+	return (dims.height + 7) / 8 * dims.width;
+}
+
+#include <string.h> // TODO get rid of this dependency
+
 void skrCastImage(
 	RasterCell const * restrict source,
 	unsigned char * restrict dest,
-	SKR_Dimensions dim)
+	SKR_Dimensions dims)
 {
-	for (long r = 0; r < dim.height; ++r) {
-		long accumulator = 0;
-		for (long c = 0; c < dim.width; ++c) {
-			long idx = dim.width * r + c;
+	for (long row = 0; row < (dims.height + 7) / 8; ++row) {
 
-			int edgeValue = source[idx].edgeValue;
-			int value = accumulator + edgeValue;
-			int linearValue = clamp(value, 0, 1024);
-			int gammaValue = LinearToGamma[linearValue];
-			dest[idx] = gammaValue;
+		long accumulators[8] = { 0 };
 
-			int tailValue = source[idx].tailValue;
-			accumulator += tailValue;
+		for (long col = 0; col < dims.width; ++col) {
+
+			short edgeValues[8], tailValues[8];
+			memcpy(edgeValues, source[row * dims.width + col].edgeValues, sizeof(edgeValues));
+			memcpy(tailValues, source[row * dims.width + col].tailValues, sizeof(tailValues));
+
+			for (int q = 0; q < 8; ++q) {
+				int value = accumulators[q] + edgeValues[q];
+				int linearValue = clamp(value, 0, 1024);
+				// TODO gamma correction
+				int gammaValue = linearValue * 255 / 1024;
+				if (row * 8 + q < dims.height) {
+					dest[(row * 8 + q) * dims.width + col] = gammaValue;
+				}
+
+				accumulators[q] += tailValues[q];
+			}
 		}
-		SKR_assert(accumulator == 0);
+		for (int q = 0; q < 8; ++q) {
+			SKR_assert(accumulators[q] == 0);
+		}
 	}
 }

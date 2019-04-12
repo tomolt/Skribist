@@ -62,7 +62,8 @@ typedef struct {
 } LineBuffer;
 
 typedef struct {
-	long edgeValue, tailValue;
+	short edgeValues[8];
+	short tailValues[8];
 } RasterCell;
 
 typedef struct {
@@ -117,11 +118,7 @@ SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	Transform transform, RasterCell * raster, SKR_Dimensions dims);
 SKR_Status skrLoadCMap(BYTES1 * addr);
 
-void skrBeginTesselating(CurveBuffer const *source,
-	Transform transform, CurveBuffer *stack);
-void skrContinueTesselating(CurveBuffer *stack,
-	double flatness, LineBuffer *dest);
-
+unsigned long skrCalcCellCount(SKR_Dimensions dims);
 void skrCastImage(
 	RasterCell const * restrict source,
 	unsigned char * restrict dest,

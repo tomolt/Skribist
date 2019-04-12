@@ -154,7 +154,8 @@ int main(int argc, char const *argv[])
 		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
 		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
 
-	RasterCell * raster = calloc(dims.width * dims.height, sizeof(RasterCell));
+	unsigned long cellCount = skrCalcCellCount(dims);
+	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
 	s = skrDrawOutline(&font, glyph, transform, raster, dims);
