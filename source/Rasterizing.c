@@ -63,10 +63,10 @@ static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 	}
 
 	double prev_t = 0.0;
-	Point prev_pt = line.beg, pt = prev_pt;
+	long prev_qx = round(line.beg.x * 1024.0);
+	long prev_qy = round(line.beg.y * 1024.0);
 
-	// TODO maybe it's enough to only go to < 1.0, as we close it up afterwards anyways
-	while (xt <= 1.0 || yt <= 1.0) {
+	while (xt < 1.0 || yt < 1.0) {
 		double t;
 
 		if (xt < yt) {
@@ -79,31 +79,20 @@ static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 
 		if (t == prev_t) continue;
 
-		pt.x = line.beg.x + t * diff.x;
-		pt.y = line.beg.y + t * diff.y;
+		long qx = round((line.beg.x + t * diff.x) * 1024.0);
+		long qy = round((line.beg.y + t * diff.y) * 1024.0);
 
-		// quantized beg & end coordinates
-		long qbx = round(prev_pt.x * 1024.0);
-		long qby = round(prev_pt.y * 1024.0);
-		long qex = round(pt.x * 1024.0);
-		long qey = round(pt.y * 1024.0);
-
-		RasterizeDot(qbx, qby, qex, qey, dest, dims);
+		RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 
 		prev_t = t;
-		prev_pt = pt;
+		prev_qx = qx;
+		prev_qy = qy;
 	}
 
-	// TODO reevaluate the need for the condition
-	if (!(prev_pt.x == line.end.x && prev_pt.y == line.end.y)) {
-		// quantized beg & end coordinates
-		long qbx = round(prev_pt.x * 1024.0);
-		long qby = round(prev_pt.y * 1024.0);
-		long qex = round(line.end.x * 1024.0);
-		long qey = round(line.end.y * 1024.0);
+	long qx = round(line.end.x * 1024.0);
+	long qy = round(line.end.y * 1024.0);
 
-		RasterizeDot(qbx, qby, qex, qey, dest, dims);
-	}
+	RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 }
 
 static void DrawLine(Line line, RasterCell * dest, SKR_Dimensions dims)
