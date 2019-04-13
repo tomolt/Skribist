@@ -144,8 +144,6 @@ int main(int argc, char const *argv[])
 #endif
 
 	SKR_Transform transform1 = { 64.0, 64.0, 0.0, 0.0 };
-	transform1.xScale /= font.unitsPerEm;
-	transform1.yScale /= font.unitsPerEm;
 
 	SKR_Bounds bounds;
 	s = skrGetOutlineBounds(&font, glyph, transform1, &bounds);

@@ -35,9 +35,6 @@ static int read_file(char const *filename, void **addr)
 
 static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform1)
 {
-	transform1.xScale /= font->unitsPerEm;
-	transform1.yScale /= font->unitsPerEm;
-
 	SKR_Bounds bounds;
 	skrGetOutlineBounds(font, glyph, transform1, &bounds);
 

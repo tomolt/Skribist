@@ -190,6 +190,9 @@ SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
 	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
 	ShHdr const * sh = (ShHdr const *) outlineAddr;
 
+	transform.xScale /= font->unitsPerEm;
+	transform.yScale /= font->unitsPerEm;
+
 	// TODO i guess the floor() is not neccessary here.
 	bounds->xMin = floor((double) (ri16(sh->xMin) - 1) * transform.xScale + transform.xMove);
 	bounds->yMin = floor((double) (ri16(sh->yMin) - 1) * transform.yScale + transform.yMove);
@@ -324,13 +327,6 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 	return co;
 }
 
-static Point TransformPoint(Point point, SKR_Transform trf)
-{
-	return (Point) {
-		point.x * trf.xScale + trf.xMove,
-		point.y * trf.yScale + trf.yMove };
-}
-
 static void DrawOutlineWithIntel(OutlineIntel * intel,
 	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
@@ -356,7 +352,9 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 			do {
 				long x = GetCoordinateAndAdvance(flags, &intel->xPtr, prevX);
 				long y = GetCoordinateAndAdvance(flags >> 1, &intel->yPtr, prevY);
-				Point point = TransformPoint((Point) { x, y }, transform);
+				Point point = {
+					x * transform.xScale + transform.xMove,
+					y * transform.yScale + transform.yMove };
 				ExtendContour(&fsm, point, flags & SGF_ON_CURVE_POINT);
 				prevX = x, prevY = y;
 				++pointIdx;
@@ -377,6 +375,8 @@ SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	OutlineIntel intel = { 0 };
 	s = ScoutOutline(outlineAddr, &intel);
 	if (s) return s;
+	transform.xScale /= font->unitsPerEm;
+	transform.yScale /= font->unitsPerEm;
 	DrawOutlineWithIntel(&intel, transform, raster, dims);
 	return SKR_SUCCESS;
 }
