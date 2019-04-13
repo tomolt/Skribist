@@ -168,11 +168,11 @@ typedef struct {
 } ShHdr;
 
 // TODO GetOutlineRange instead
-static BYTES1 * GetOutlineAddr(SKR_Font const * font, Glyph glyph)
+static SKR_Status GetOutlineAddr(SKR_Font const * font, Glyph glyph, BYTES1 ** addr)
 {
 	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
 	int n = font->numGlyphs + 1;
-	SKR_assert(glyph < n); // TODO return status code here instead
+	if (!(glyph < n)) return SKR_FAILURE;
 	unsigned long offset;
 	if (!font->indexToLocFormat) {
 		BYTES2 * loca = (BYTES2 *) locaAddr;
@@ -181,13 +181,17 @@ static BYTES1 * GetOutlineAddr(SKR_Font const * font, Glyph glyph)
 		BYTES4 * loca = (BYTES4 *) locaAddr;
 		offset = ru32(loca[glyph]);
 	}
-	return (BYTES1 *) font->data + font->glyf.offset + offset;
+	*addr = (BYTES1 *) font->data + font->glyf.offset + offset;
+	return SKR_SUCCESS;
 }
 
 SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, SKR_Bounds * bounds)
 {
-	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
+	SKR_Status s;
+	BYTES1 * outlineAddr;
+	s = GetOutlineAddr(font, glyph, &outlineAddr);
+	if (s) return s;
 	ShHdr const * sh = (ShHdr const *) outlineAddr;
 
 	transform.xScale /= font->unitsPerEm;
@@ -371,7 +375,9 @@ SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
 	SKR_Status s;
-	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
+	BYTES1 * outlineAddr;
+	s = GetOutlineAddr(font, glyph, &outlineAddr);
+	if (s) return s;
 	OutlineIntel intel = { 0 };
 	s = ScoutOutline(outlineAddr, &intel);
 	if (s) return s;
