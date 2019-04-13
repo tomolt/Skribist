@@ -26,97 +26,33 @@ typedef struct {
 	short unitsPerEm, indexToLocFormat, numGlyphs;
 } SKR_Font;
 
-SKR_Status skrInitializeFont(SKR_Font * font);
-
 typedef struct {
-	double x, y;
-} Point;
+	long width, height;
+} SKR_Dimensions;
+
+/*
+The transformation order goes: first scale, then move.
+*/
+typedef struct {
+	double xScale, yScale, xMove, yMove;
+} SKR_Transform;
 
 typedef struct {
 	double xMin, yMin, xMax, yMax;
 } SKR_Rect;
 
 typedef struct {
-	Point beg, end;
-} Line;
-
-typedef struct {
-	Point beg, ctrl, end;
-} Curve;
-
-/*
-The transformation order goes: first scale, then move.
-*/
-typedef struct {
-	Point scale, move;
-} Transform;
-
-typedef struct {
-	int space, count;
-	Curve *elems;
-} CurveBuffer;
-
-typedef struct {
-	int space, count;
-	Line *elems;
-} LineBuffer;
-
-typedef struct {
 	short edgeValues[8];
 	short tailValues[8];
 } RasterCell;
 
-typedef struct {
-	long width, height;
-} SKR_Dimensions;
-
-#if 0
-typedef struct {
-	// SKR_Format format;
-	long stride;
-} SKR_ImageInfo;
-#endif
-
-/*
-All information resulting from the
-scouting pass.
-*/
-typedef struct {
-	int numContours;
-	BYTES2 * endPts;
-	BYTES1 * flagsPtr;
-	BYTES1 * xPtr;
-	BYTES1 * yPtr;
-} OutlineIntel;
-
-typedef struct {
-	unsigned int state;
-	Point queuedStart;
-	Point queuedPivot;
-	Point looseEnd;
-
-	RasterCell * raster;
-	SKR_Dimensions dims;
-} ContourFSM;
-
-#if 0
-typedef struct {
-	BYTES1 * outlineAddr;
-	OutlineIntel outlineIntel;
-	ContourFSM contourFsm;
-	Transform transform;
-	SKR_Dimensions dimensions;
-	RasterCell * raster;
-} DrawingArgs;
-#endif
-
 void skrInitializeLibrary(void);
+SKR_Status skrInitializeFont(SKR_Font * font);
 
-BYTES1 * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph);
-SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry);
+SKR_Rect skrGetOutlineBounds(SKR_Font const * font, Glyph glyph);
 SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
-	Transform transform, RasterCell * raster, SKR_Dimensions dims);
-SKR_Status skrLoadCMap(BYTES1 * addr);
+	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims);
+SKR_Status skrLoadCMap(SKR_Font const * font);
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims);
 void skrCastImage(

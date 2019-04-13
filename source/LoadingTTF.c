@@ -1,10 +1,3 @@
-static Point TransformPoint(Point point, Transform trf)
-{
-	return (Point) {
-		point.x * trf.scale.x + trf.move.x,
-		point.y * trf.scale.y + trf.move.y };
-}
-
 typedef struct {
 	char tag[4];
 	BYTES4 checksum;
@@ -141,6 +134,28 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 #define SGF_OVERLAP_SIMPLE 0x40
 
 /*
+All information resulting from the
+scouting pass.
+*/
+typedef struct {
+	int numContours;
+	BYTES2 * endPts;
+	BYTES1 * flagsPtr;
+	BYTES1 * xPtr;
+	BYTES1 * yPtr;
+} OutlineIntel;
+
+typedef struct {
+	unsigned int state;
+	Point queuedStart;
+	Point queuedPivot;
+	Point looseEnd;
+
+	RasterCell * raster;
+	SKR_Dimensions dims;
+} ContourFSM;
+
+/*
 This header is shared by the simple
 and compound glyph outlines.
 */
@@ -153,11 +168,11 @@ typedef struct {
 } ShHdr;
 
 // TODO GetOutlineRange instead
-BYTES1 const * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph)
+static BYTES1 * GetOutlineAddr(SKR_Font const * font, Glyph glyph)
 {
 	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
 	int n = font->numGlyphs + 1;
-	SKR_assert(glyph < n);
+	SKR_assert(glyph < n); // TODO return status code here instead
 	unsigned long offset;
 	if (!font->indexToLocFormat) {
 		BYTES2 * loca = (BYTES2 *) locaAddr;
@@ -169,11 +184,14 @@ BYTES1 const * skrGetOutlineAddr(SKR_Font const * font, Glyph glyph)
 	return (BYTES1 *) font->data + font->glyf.offset + offset;
 }
 
-SKR_Rect skrGetOutlineBounds(BYTES1 * glyfEntry)
+// TODO apply transform in here
+SKR_Rect skrGetOutlineBounds(SKR_Font const * font, Glyph glyph)
 {
-	ShHdr const * sh = (ShHdr const *) glyfEntry;
+	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
+
+	ShHdr const * sh = (ShHdr const *) outlineAddr;
 	return (SKR_Rect) {
-		ri16(sh->xMin) + 1, ri16(sh->yMin) + 1,
+		ri16(sh->xMin) - 1, ri16(sh->yMin) - 1,
 		ri16(sh->xMax) + 1, ri16(sh->yMax) + 1 };
 }
 
@@ -302,8 +320,15 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 	return co;
 }
 
+static Point TransformPoint(Point point, SKR_Transform trf)
+{
+	return (Point) {
+		point.x * trf.xScale + trf.xMove,
+		point.y * trf.yScale + trf.yMove };
+}
+
 static void DrawOutlineWithIntel(OutlineIntel * intel,
-	Transform transform, RasterCell * raster, SKR_Dimensions dims)
+	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
@@ -341,10 +366,10 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 }
 
 SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
-	Transform transform, RasterCell * raster, SKR_Dimensions dims)
+	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
 {
 	SKR_Status s;
-	BYTES1 * outlineAddr = skrGetOutlineAddr(font, glyph);
+	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
 	OutlineIntel intel = { 0 };
 	s = ScoutOutline(outlineAddr, &intel);
 	if (s) return s;
@@ -380,8 +405,10 @@ typedef enum {
 
 #include <stdio.h> // TEMP
 
-SKR_Status skrLoadCMap(BYTES1 * addr)
+SKR_Status skrLoadCMap(SKR_Font const * font)
 {
+	BYTES1 * addr = (BYTES1 *) font->data + font->cmap.offset;
+
 	TTF_cmap * cmap = (TTF_cmap *) addr;
 	uint16_t version = ru16(cmap->version);
 	if (version != 0) return SKR_FAILURE;

@@ -24,9 +24,17 @@ C standard headers - we can use these even if we don't link with the standard li
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-#define clamp(v, l, h) min(max((v), (l)), (h))
+typedef struct {
+	double x, y;
+} Point;
 
-#define sign(x) ((x) >= 0 ? 1 : -1)
+typedef struct {
+	Point beg, end;
+} Line;
+
+typedef struct {
+	Point beg, ctrl, end;
+} Curve;
 
 static int CompareStrings(char const * a, char const * b, long n)
 {

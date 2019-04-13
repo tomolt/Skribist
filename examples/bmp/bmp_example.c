@@ -144,15 +144,15 @@ int main(int argc, char const *argv[])
 	}
 #endif
 
-	SKR_Rect rect = skrGetOutlineBounds(skrGetOutlineAddr(&font, glyph));
+	SKR_Rect rect = skrGetOutlineBounds(&font, glyph);
 
-	Transform transform = {
-		{ 64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm },
-		{ 64.0, 64.0 } };
+	SKR_Transform transform = {
+		64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm,
+		64.0, 64.0 };
 
 	SKR_Dimensions dims = {
-		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
-		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
+		.width  = ceil(rect.xMax * transform.xScale + transform.xMove),
+		.height = ceil(rect.yMax * transform.yScale + transform.yMove) };
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));

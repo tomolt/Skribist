@@ -34,13 +34,13 @@ static int read_file(char const *filename, void **addr)
 	return 0;
 }
 
-static void draw_outline(SKR_Font const * font, Glyph glyph, Transform transform)
+static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform)
 {
-	SKR_Rect rect = skrGetOutlineBounds(skrGetOutlineAddr(font, glyph));
+	SKR_Rect rect = skrGetOutlineBounds(font, glyph);
 
 	SKR_Dimensions dims = {
-		.width  = ceil(rect.xMax * transform.scale.x + transform.move.x),
-		.height = ceil(rect.yMax * transform.scale.y + transform.move.y) };
+		.width  = ceil(rect.xMax * transform.xScale + transform.xMove),
+		.height = ceil(rect.yMax * transform.yScale + transform.yMove) };
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
@@ -83,9 +83,9 @@ int main()
 	for (int i = 0; i < 100; ++i) {
 		for (double size = 6.0; size <= 48.0; size += 2.0) {
 			for (Glyph glyph = 0; glyph < 500; ++glyph) {
-				Transform transform = {
-					{ size / font.unitsPerEm, size / font.unitsPerEm },
-					{ 64.0, 64.0 } };
+				SKR_Transform transform = {
+					size / font.unitsPerEm, size / font.unitsPerEm,
+					64.0, 64.0 };
 				draw_outline(&font, glyph, transform);
 			}
 		}
