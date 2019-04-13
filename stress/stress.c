@@ -33,19 +33,27 @@ static int read_file(char const *filename, void **addr)
 	return 0;
 }
 
-static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform)
+static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform1)
 {
-	SKR_Rect rect = skrGetOutlineBounds(font, glyph);
+	transform1.xScale /= font->unitsPerEm;
+	transform1.yScale /= font->unitsPerEm;
+
+	SKR_Bounds bounds;
+	skrGetOutlineBounds(font, glyph, transform1, &bounds);
+
+	SKR_Transform transform2 = transform1;
+	transform2.xMove -= bounds.xMin;
+	transform2.yMove -= bounds.yMin;
 
 	SKR_Dimensions dims = {
-		.width  = ceil(rect.xMax * transform.xScale + transform.xMove),
-		.height = ceil(rect.yMax * transform.yScale + transform.yMove) };
+		.width  = bounds.xMax - bounds.xMin,
+		.height = bounds.yMax - bounds.yMin };
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
-	SKR_Status s = skrDrawOutline(font, glyph, transform, raster, dims);
+	SKR_Status s = skrDrawOutline(font, glyph, transform2, raster, dims);
 
 	if (!s) {
 		skrCastImage(raster, image, dims);
@@ -82,9 +90,7 @@ int main()
 	for (int i = 0; i < 100; ++i) {
 		for (double size = 6.0; size <= 48.0; size += 2.0) {
 			for (Glyph glyph = 0; glyph < 500; ++glyph) {
-				SKR_Transform transform = {
-					size / font.unitsPerEm, size / font.unitsPerEm,
-					64.0, 64.0 };
+				SKR_Transform transform = { size, size, 0.0, 0.0 };
 				draw_outline(&font, glyph, transform);
 			}
 		}

@@ -38,8 +38,8 @@ typedef struct {
 } SKR_Transform;
 
 typedef struct {
-	double xMin, yMin, xMax, yMax;
-} SKR_Rect;
+	long xMin, yMin, xMax, yMax;
+} SKR_Bounds;
 
 typedef struct {
 	short edgeValues[8];
@@ -49,7 +49,8 @@ typedef struct {
 void skrInitializeLibrary(void);
 SKR_Status skrInitializeFont(SKR_Font * font);
 
-SKR_Rect skrGetOutlineBounds(SKR_Font const * font, Glyph glyph);
+SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
+	SKR_Transform transform, SKR_Bounds * bounds);
 SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims);
 SKR_Status skrLoadCMap(SKR_Font const * font);

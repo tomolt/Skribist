@@ -143,21 +143,29 @@ int main(int argc, char const *argv[])
 	}
 #endif
 
-	SKR_Rect rect = skrGetOutlineBounds(&font, glyph);
+	SKR_Transform transform1 = { 64.0, 64.0, 0.0, 0.0 };
+	transform1.xScale /= font.unitsPerEm;
+	transform1.yScale /= font.unitsPerEm;
 
-	SKR_Transform transform = {
-		64.0 / font.unitsPerEm, 64.0 / font.unitsPerEm,
-		64.0, 64.0 };
+	SKR_Bounds bounds;
+	s = skrGetOutlineBounds(&font, glyph, transform1, &bounds);
+	if (s != SKR_SUCCESS) {
+		return EXIT_FAILURE;
+	}
+
+	SKR_Transform transform2 = transform1;
+	transform2.xMove -= bounds.xMin;
+	transform2.yMove -= bounds.yMin;
 
 	SKR_Dimensions dims = {
-		.width  = ceil(rect.xMax * transform.xScale + transform.xMove),
-		.height = ceil(rect.yMax * transform.yScale + transform.yMove) };
+		.width  = bounds.xMax - bounds.xMin,
+		.height = bounds.yMax - bounds.yMin };
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
-	s = skrDrawOutline(&font, glyph, transform, raster, dims);
+	s = skrDrawOutline(&font, glyph, transform2, raster, dims);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "This type of outline is not implemented yet.\n");
 		return EXIT_FAILURE;

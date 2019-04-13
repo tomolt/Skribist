@@ -184,15 +184,19 @@ static BYTES1 * GetOutlineAddr(SKR_Font const * font, Glyph glyph)
 	return (BYTES1 *) font->data + font->glyf.offset + offset;
 }
 
-// TODO apply transform in here
-SKR_Rect skrGetOutlineBounds(SKR_Font const * font, Glyph glyph)
+SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
+	SKR_Transform transform, SKR_Bounds * bounds)
 {
 	BYTES1 * outlineAddr = GetOutlineAddr(font, glyph);
-
 	ShHdr const * sh = (ShHdr const *) outlineAddr;
-	return (SKR_Rect) {
-		ri16(sh->xMin) - 1, ri16(sh->yMin) - 1,
-		ri16(sh->xMax) + 1, ri16(sh->yMax) + 1 };
+
+	// TODO i guess the floor() is not neccessary here.
+	bounds->xMin = floor((double) (ri16(sh->xMin) - 1) * transform.xScale + transform.xMove);
+	bounds->yMin = floor((double) (ri16(sh->yMin) - 1) * transform.yScale + transform.yMove);
+	bounds->xMax = ceil ((double) (ri16(sh->xMax) + 1) * transform.xScale + transform.xMove);
+	bounds->yMax = ceil ((double) (ri16(sh->yMax) + 1) * transform.yScale + transform.yMove);
+
+	return SKR_SUCCESS;
 }
 
 /*
