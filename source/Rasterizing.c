@@ -100,8 +100,6 @@ static void DrawLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 	RasterizeLine(line, dest, dims);
 }
 
-#include <math.h> // TODO get rid of
-
 // TODO take monitor gamma i guess?
 static double CalcLinearToGamma(double L)
 {
@@ -127,10 +125,6 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims)
 {
 	return (dims.height + 7) / 8 * dims.width;
 }
-
-#include <string.h> // TODO get rid of this dependency
-
-#include <emmintrin.h>
 
 void skrCastImage(
 	RasterCell const * restrict source,

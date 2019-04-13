@@ -4,14 +4,15 @@ C stdlib headers - dependency on these should be removed as soon as possible.
 */
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 /*
 C standard headers - we can use these even if we don't link with the standard library.
 */
 #include <stdint.h>
+#include <emmintrin.h> // TODO MSVC
 
-#include "Reading.c" // FIXME
 #include "Skribist.h"
 
 #define SKR_assert(stmt) assert(stmt)
@@ -52,6 +53,7 @@ static Point Midpoint(Point a, Point b)
 	return (Point) { x, y };
 }
 
+#include "Reading.c"
 #include "Rasterizing.c"
 #include "Tesselating.c"
 #include "LoadingTTF.c"
