@@ -401,6 +401,43 @@ typedef struct {
 	TTF_EncodingRecord encodingRecords[];
 } TTF_cmap;
 
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+} TTF_SharedFormatHeader;
+
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+	BYTES2 segCountX2;
+	BYTES2 searchRange;
+	BYTES2 entrySelector;
+	BYTES2 rangeShift;
+} TTF_Format4;
+
+#include <stdio.h> // TEMP
+
+static void InterpretFormat4(TTF_Format4 const * mapping)
+{
+	int segCount = ru16(mapping->segCountX2) / 2;
+	BYTES2 * baseAddr = (BYTES2 *) mapping + 7;
+	BYTES2 * endCodes = baseAddr;
+	BYTES2 * startCodes = baseAddr + 1 + segCount;
+	BYTES2 * idDeltas = baseAddr + 1 + segCount * 2;
+	BYTES2 * idRangeOffsets = baseAddr + 1 + segCount * 3;
+	BYTES2 * glyphIndexArray = baseAddr + 1 + segCount * 4;
+	for (int i = 0; i < segCount; ++i) {
+		int startCode = ru16(startCodes[i]);
+		int endCode = ru16(endCodes[i]);
+		int idDelta = ru16(idDeltas[i]);
+		int idRangeOffset = ru16(idRangeOffsets[i]);
+		printf("[%u, %u]: d = %u, o = %u\n",
+			startCode, endCode, idDelta, idRangeOffset);
+	}
+}
+
 /*
 lower is better, INT_MAX means ignore completely.
 */
@@ -429,35 +466,17 @@ static int GetEncodingPriority(TTF_EncodingRecord const * record)
 	}
 }
 
-static int IsSupportedFormat(SKR_Font const * font, TTF_EncodingRecord const * record)
+static int IsSupportedFormat(BYTES1 * cmapAddr, TTF_EncodingRecord const * record)
 {
 	/*
-	Wanted Formats: 0, 4, 6, 12
+	Wanted Formats: 4, 6, 12
 	*/
-	BYTES1 * addr = (BYTES1 *) font->data + ru32(record->offset);
+	BYTES1 * addr = cmapAddr + ru32(record->offset);
 	int format = ru16(*(BYTES2 *) addr);
+	printf("Got format %d.\n", format);
 	switch (format) {
-	case 0: return 1;
+	case 4: return 1;
 	default: return 0;
-	}
-}
-
-#include <stdio.h> // TEMP
-
-typedef struct {
-	BYTES2 format; // is 0
-	BYTES2 length; // is 262
-	BYTES2 language; // deprecated
-	BYTES1 glyphIndexArray[256];
-} TTF_Format0;
-
-static void LoadMapping(SKR_Font const * font, TTF_EncodingRecord const * record)
-{
-	BYTES1 * addr = (BYTES1 *) font->data + ru32(record->offset);
-	TTF_Format0 const * mapping = (TTF_Format0 const *) addr;
-	for (int c = 0; c < 256; ++c) {
-		int glyph = mapping->glyphIndexArray[c];
-		printf("'%c' -> %d\n", c, glyph);
 	}
 }
 
@@ -477,14 +496,15 @@ SKR_Status skrLoadCMap(SKR_Font const * font)
 		int priority = GetEncodingPriority(contender);
 
 		if (priority >= bestPriority) continue;
-		if (!IsSupportedFormat(font, contender)) continue;
+		if (!IsSupportedFormat(cmapAddr, contender)) continue;
 
 		record = contender;
 		bestPriority = priority;
 	}
 	if (bestPriority == INT_MAX) return SKR_FAILURE;
 
-	LoadMapping(font, record);
+	TTF_Format4 const * format = (TTF_Format4 const *) (cmapAddr + ru32(record->offset));
+	InterpretFormat4(format);
 
 	return SKR_SUCCESS;
 }
