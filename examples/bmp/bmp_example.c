@@ -135,8 +135,8 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-#if 0
-	s = skrLoadCMap((BYTES1 *) font.data + font.cmap.offset);
+#if 1
+	s = skrLoadCMap(&font);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "Unsupported cmap format / encoding.\n");
 		return EXIT_FAILURE;

@@ -401,55 +401,90 @@ typedef struct {
 	TTF_EncodingRecord encodingRecords[];
 } TTF_cmap;
 
-typedef struct {
-	BYTES2 format;
-	BYTES2 length;
-	BYTES2 language;
-	BYTES1 glyphIdArray[256];
-} TTF_Format0;
+/*
+lower is better, INT_MAX means ignore completely.
+*/
+static int GetEncodingPriority(TTF_EncodingRecord const * record)
+{
+	int platformID = ru16(record->platformID);
+	int encodingID = ru16(record->encodingID);
+	if (platformID == 0) { // Unicode
+		switch (encodingID) {
+		case 0: return 105;
+		case 1: return 104;
+		case 2: return 103;
+		case 3: return 102;
+		case 4: return 101;
+		default: return INT_MAX;
+		}
+	} else if (platformID == 3) { // Windows
+		switch (encodingID) {
+		case 0: return 203;
+		case 1: return 202;
+		case 10: return 201;
+		default: return INT_MAX;
+		}
+	} else {
+		return INT_MAX;
+	}
+}
 
-typedef enum {
-	ENC_MACINTOSH,
-	ENC_WINDOWS_BMP
-} Encoding;
+static int IsSupportedFormat(SKR_Font const * font, TTF_EncodingRecord const * record)
+{
+	/*
+	Wanted Formats: 0, 4, 6, 12
+	*/
+	BYTES1 * addr = (BYTES1 *) font->data + ru32(record->offset);
+	int format = ru16(*(BYTES2 *) addr);
+	switch (format) {
+	case 0: return 1;
+	default: return 0;
+	}
+}
 
 #include <stdio.h> // TEMP
 
+typedef struct {
+	BYTES2 format; // is 0
+	BYTES2 length; // is 262
+	BYTES2 language; // deprecated
+	BYTES1 glyphIndexArray[256];
+} TTF_Format0;
+
+static void LoadMapping(SKR_Font const * font, TTF_EncodingRecord const * record)
+{
+	BYTES1 * addr = (BYTES1 *) font->data + ru32(record->offset);
+	TTF_Format0 const * mapping = (TTF_Format0 const *) addr;
+	for (int c = 0; c < 256; ++c) {
+		int glyph = mapping->glyphIndexArray[c];
+		printf("'%c' -> %d\n", c, glyph);
+	}
+}
+
 SKR_Status skrLoadCMap(SKR_Font const * font)
 {
-	BYTES1 * addr = (BYTES1 *) font->data + font->cmap.offset;
+	BYTES1 * cmapAddr = (BYTES1 *) font->data + font->cmap.offset;
+	TTF_cmap * cmap = (TTF_cmap *) cmapAddr;
 
-	TTF_cmap * cmap = (TTF_cmap *) addr;
 	uint16_t version = ru16(cmap->version);
 	if (version != 0) return SKR_FAILURE;
-	uint16_t numTables = ru16(cmap->numTables);
-	for (uint16_t t = 0; t < numTables; ++t) {
-		TTF_EncodingRecord * rec = &cmap->encodingRecords[t];
-		Encoding encoding;
-		uint16_t platformID = ru16(rec->platformID);
-		uint16_t encodingID = ru16(rec->encodingID);
-		if (platformID == 1 && encodingID == 0) {
-			encoding = ENC_MACINTOSH;
-		} else if (platformID == 3 && encodingID == 1) {
-			encoding = ENC_WINDOWS_BMP;
-		} else {
-			continue;
-		}
-		uint16_t offset = ru32(rec->offset);
-		uint16_t format = ru16(*(addr + offset));
-		if (format == 0) {
-			TTF_Format0 * fmt0 = (TTF_Format0 *) (addr + offset);
-			uint16_t length = ru16(fmt0->length);
-			printf("length: %d\n", length);
-			uint16_t language = ru16(fmt0->language);
-			printf("language: %d\n", language);
-			for (int c = 0; c < 256; ++c) {
-				Glyph glyph = fmt0->glyphIdArray[c];
-				printf("#%02x ('%c') -> %ld\n", c, c, glyph);
-			}
-		} else {
-			continue;
-		}
+
+	TTF_EncodingRecord const * record;
+	int bestPriority = INT_MAX;
+	int numTables = ru16(cmap->numTables);
+	for (int i = 0; i < numTables; ++i) {
+		TTF_EncodingRecord const * contender = &cmap->encodingRecords[i];
+		int priority = GetEncodingPriority(contender);
+
+		if (priority >= bestPriority) continue;
+		if (!IsSupportedFormat(font, contender)) continue;
+
+		record = contender;
+		bestPriority = priority;
 	}
+	if (bestPriority == INT_MAX) return SKR_FAILURE;
+
+	LoadMapping(font, record);
+
 	return SKR_SUCCESS;
 }

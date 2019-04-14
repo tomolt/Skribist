@@ -11,6 +11,7 @@ C stdlib headers - dependency on these should be removed as soon as possible.
 C standard headers - we can use these even if we don't link with the standard library.
 */
 #include <stdint.h>
+#include <limits.h>
 #include <emmintrin.h> // TODO MSVC
 
 #include "Skribist.h"
