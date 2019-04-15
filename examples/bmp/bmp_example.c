@@ -135,13 +135,8 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-#if 1
-	s = skrLoadCMap(&font);
-	if (s != SKR_SUCCESS) {
-		fprintf(stderr, "Unsupported cmap format / encoding.\n");
-		return EXIT_FAILURE;
-	}
-#endif
+	Glyph glyphH = skrGlyphFromCode(&font, 'h');
+	printf("Glyph for 'h': %lu\n", glyphH);
 
 	SKR_Transform transform1 = { 64.0, 64.0, 0.0, 0.0 };
 

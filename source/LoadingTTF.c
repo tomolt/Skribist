@@ -188,7 +188,7 @@ static SKR_Status Parse_cmap_format4(SKR_Font * font, unsigned long offset)
 
 	BYTES1 * fmt4Addr = (BYTES1 *) font->data + font->cmap.offset + offset;
 	TTF_cmap_format4 const * table = (TTF_cmap_format4 const *) fmt4Addr;
-	SKR_cmap_format4 * fmt4 = font->mapping.format4;
+	SKR_cmap_format4 * fmt4 = &font->mapping.format4;
 
 	int segCountX2 = ru16(table->segCountX2);
 	SKR_assert(segCountX2 % 2 == 0);
@@ -252,14 +252,15 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 ======== character mapping ========
 */
 
-static int FindSegment_Format4(BYTES2 * startCodes, BYTES2 * endCodes, int charCode)
+static int FindSegment_Format4(int segCount,
+	BYTES2 * startCodes, BYTES2 * endCodes, int charCode)
 {
 	/*
 	TODO upgrade to binary search here.
 	Right now this is linear search because there's less stuff that can go wrong with it.
 	*/
-	assert(charCode <= USHORT_MAX);
-	for (int i = 0; i < cmap->segCount; ++i) {
+	assert(charCode <= USHRT_MAX);
+	for (int i = 0; i < segCount; ++i) {
 		int endCode = ru16(endCodes[i]);
 		if (endCode < charCode) continue;
 
@@ -273,32 +274,36 @@ static int FindSegment_Format4(BYTES2 * startCodes, BYTES2 * endCodes, int charC
 
 static Glyph GlyphFromCode_Format4(SKR_Font const * font, int charCode)
 {
-	SKR_cmap4 const * cmap = &font->cmap.format4;
-	BYTES2 * startCodes = (BYTES2 *) ((BYTES1 *) font->data + cmap->startCodes);
-	BYTES2 * endCodes = (BYTES2 *) ((BYTES1 *) font->data + cmap->endCodes);
-	BYTES2 * idDeltas = (BYTES2 *) ((BYTES1 *) font->data + cmap->idDeltas);
-	BYTES2 * idRangeOffsets = (BYTES2 *) ((BYTES1 *) font->data + cmap->idRangeOffsets);
+	SKR_cmap_format4 const * mapping = &font->mapping.format4;
+	BYTES2 * startCodes = (BYTES2 *) ((BYTES1 *) font->data + mapping->startCodes);
+	BYTES2 * endCodes = (BYTES2 *) ((BYTES1 *) font->data + mapping->endCodes);
+	BYTES2 * idDeltas = (BYTES2 *) ((BYTES1 *) font->data + mapping->idDeltas);
+	BYTES2 * idRangeOffsets = (BYTES2 *) ((BYTES1 *) font->data + mapping->idRangeOffsets);
 
-	int segment = FindSegment_Format4(startCodes, endCodes, charCode);
+	int segment = FindSegment_Format4(mapping->segCount, startCodes, endCodes, charCode);
+
 	if (segment < 0) {
 		return 0;
 	}
 
-	int idRangeOffset = ru16(idRangeOffsets[i]);
+	int startCode = ru16(startCodes[segment]);
+	int idDelta = ru16(idDeltas[segment]);
+	int idRangeOffset = ru16(idRangeOffsets[segment]);
+
 	if (idRangeOffset == 0) {
 		return (uint16_t) (charCode + idDelta);
 	}
 
 	SKR_assert(idRangeOffset % 2 == 0);
 
-	BYTES2 * glyphAddr = &idRangeOffsets[i] + idRangeOffset / 2 + (charCode - startCode);
+	BYTES2 * glyphAddr = &idRangeOffsets[segment] + idRangeOffset / 2 + (charCode - startCode);
 	Glyph glyph = ru16(*glyphAddr);
 	return glyph > 0 ? (uint16_t) (glyph + idDelta) : 0;
 }
 
 Glyph skrGlyphFromCode(SKR_Font const * font, int charCode)
 {
-	switch (font->cmapFormat) {
+	switch (font->mappingFormat) {
 	case 4:
 		return GlyphFromCode_Format4(font, charCode);
 	default: SKR_assert(0);
