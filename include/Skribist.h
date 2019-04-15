@@ -20,10 +20,22 @@ typedef struct {
 } SKR_TTF_Table;
 
 typedef struct {
+	unsigned long endCodes, startCodes, idDeltas, idRangeOffsets;
+	int segCount;
+} SKR_cmap_format4;
+
+typedef struct {
 	void const * data;
 	unsigned long length;
+
 	SKR_TTF_Table cmap, glyf, head, loca, maxp;
+
 	short unitsPerEm, indexToLocFormat, numGlyphs;
+
+	short mappingFormat;
+	union {
+		SKR_cmap_format4 format4;
+	} mapping;
 } SKR_Font;
 
 typedef struct {
@@ -49,11 +61,12 @@ typedef struct {
 void skrInitializeLibrary(void);
 SKR_Status skrInitializeFont(SKR_Font * font);
 
+Glyph skrGlyphFromCode(SKR_Font const * font, int charCode);
+
 SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, SKR_Bounds * bounds);
 SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims);
-SKR_Status skrLoadCMap(SKR_Font const * font);
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims);
 void skrCastImage(

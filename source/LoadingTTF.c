@@ -1,3 +1,7 @@
+/*
+======== initialization ========
+*/
+
 typedef struct {
 	char tag[4];
 	BYTES4 checksum;
@@ -111,16 +115,199 @@ static SKR_Status Parse_maxp(SKR_Font * font)
 	return SKR_SUCCESS;
 }
 
+typedef struct {
+	BYTES2 platformID;
+	BYTES2 encodingID;
+	BYTES4 offset;
+} TTF_EncodingRecord;
+
+typedef struct {
+	BYTES2 version;
+	BYTES2 numTables;
+	TTF_EncodingRecord encodingRecords[];
+} TTF_cmap;
+
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+} TTF_SharedFormatHeader;
+
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+	BYTES2 segCountX2;
+	BYTES2 searchRange;
+	BYTES2 entrySelector;
+	BYTES2 rangeShift;
+} TTF_cmap_format4;
+
+/*
+lower is better, INT_MAX means ignore completely.
+*/
+static int GetEncodingPriority(TTF_EncodingRecord const * record)
+{
+	int platformID = ru16(record->platformID);
+	int encodingID = ru16(record->encodingID);
+	if (platformID == 0) { // Unicode
+		switch (encodingID) {
+		case 0: return 105;
+		case 1: return 104;
+		case 2: return 103;
+		case 3: return 102;
+		case 4: return 101;
+		default: return INT_MAX;
+		}
+	} else if (platformID == 3) { // Windows
+		switch (encodingID) {
+		case 0: return 203;
+		case 1: return 202;
+		case 10: return 201;
+		default: return INT_MAX;
+		}
+	} else {
+		return INT_MAX;
+	}
+}
+
+static int IsSupportedFormat(BYTES1 * cmapAddr, TTF_EncodingRecord const * record)
+{
+	/* Wanted Formats: 4, 6, 12 */
+	BYTES1 * addr = cmapAddr + ru32(record->offset);
+	int format = ru16(*(BYTES2 *) addr);
+	switch (format) {
+	case 4: return 1;
+	default: return 0;
+	}
+}
+
+static SKR_Status Parse_cmap_format4(SKR_Font * font, unsigned long offset)
+{
+	font->mappingFormat = 4;
+
+	BYTES1 * fmt4Addr = (BYTES1 *) font->data + font->cmap.offset + offset;
+	TTF_cmap_format4 const * table = (TTF_cmap_format4 const *) fmt4Addr;
+	SKR_cmap_format4 * fmt4 = font->mapping.format4;
+
+	int segCountX2 = ru16(table->segCountX2);
+	SKR_assert(segCountX2 % 2 == 0);
+	fmt4->segCount = segCountX2 / 2;
+
+	unsigned long baseOffset = (BYTES1 *) table - (BYTES1 *) font->data;
+	fmt4->endCodes = baseOffset;
+	fmt4->startCodes = fmt4->endCodes + 2 + segCountX2;
+	fmt4->idDeltas = fmt4->startCodes + segCountX2;
+	fmt4->idRangeOffsets = fmt4->idDeltas + segCountX2;
+
+	return SKR_SUCCESS;
+}
+
+static SKR_Status Parse_cmap(SKR_Font * font)
+{
+	SKR_Status s;
+
+	BYTES1 * cmapAddr = (BYTES1 *) font->data + font->cmap.offset;
+	TTF_cmap * cmap = (TTF_cmap *) cmapAddr;
+
+	s = ru16(cmap->version) == 0 ? SKR_SUCCESS : SKR_FAILURE;
+	if (s) return s;
+
+	TTF_EncodingRecord const * record;
+	int bestPriority = INT_MAX;
+	int numTables = ru16(cmap->numTables);
+	for (int i = 0; i < numTables; ++i) {
+		TTF_EncodingRecord const * contender = &cmap->encodingRecords[i];
+		int priority = GetEncodingPriority(contender);
+
+		if (priority >= bestPriority) continue;
+		if (!IsSupportedFormat(cmapAddr, contender)) continue;
+
+		record = contender;
+		bestPriority = priority;
+	}
+	s = bestPriority < INT_MAX ? SKR_SUCCESS : SKR_FAILURE;
+	if (s) return s;
+
+	// TODO formats other than 4
+	s = Parse_cmap_format4(font, ru32(record->offset));
+
+	return s;
+}
+
 SKR_Status skrInitializeFont(SKR_Font * font)
 {
-	SKR_Status s = SKR_SUCCESS;
+	SKR_Status s;
 	s = ExtractOffsets(font);
 	if (s) return s;
 	s = Parse_head(font);
 	if (s) return s;
 	s = Parse_maxp(font);
+	if (s) return s;
+	s = Parse_cmap(font);
 	return s;
 }
+
+/*
+======== character mapping ========
+*/
+
+static int FindSegment_Format4(BYTES2 * startCodes, BYTES2 * endCodes, int charCode)
+{
+	/*
+	TODO upgrade to binary search here.
+	Right now this is linear search because there's less stuff that can go wrong with it.
+	*/
+	assert(charCode <= USHORT_MAX);
+	for (int i = 0; i < cmap->segCount; ++i) {
+		int endCode = ru16(endCodes[i]);
+		if (endCode < charCode) continue;
+
+		int startCode = ru16(startCodes[i]);
+		if (startCode > charCode) return -1;
+
+		return i;
+	}
+	return -1;
+}
+
+static Glyph GlyphFromCode_Format4(SKR_Font const * font, int charCode)
+{
+	SKR_cmap4 const * cmap = &font->cmap.format4;
+	BYTES2 * startCodes = (BYTES2 *) ((BYTES1 *) font->data + cmap->startCodes);
+	BYTES2 * endCodes = (BYTES2 *) ((BYTES1 *) font->data + cmap->endCodes);
+	BYTES2 * idDeltas = (BYTES2 *) ((BYTES1 *) font->data + cmap->idDeltas);
+	BYTES2 * idRangeOffsets = (BYTES2 *) ((BYTES1 *) font->data + cmap->idRangeOffsets);
+
+	int segment = FindSegment_Format4(startCodes, endCodes, charCode);
+	if (segment < 0) {
+		return 0;
+	}
+
+	int idRangeOffset = ru16(idRangeOffsets[i]);
+	if (idRangeOffset == 0) {
+		return (uint16_t) (charCode + idDelta);
+	}
+
+	SKR_assert(idRangeOffset % 2 == 0);
+
+	BYTES2 * glyphAddr = &idRangeOffsets[i] + idRangeOffset / 2 + (charCode - startCode);
+	Glyph glyph = ru16(*glyphAddr);
+	return glyph > 0 ? (uint16_t) (glyph + idDelta) : 0;
+}
+
+Glyph skrGlyphFromCode(SKR_Font const * font, int charCode)
+{
+	switch (font->cmapFormat) {
+	case 4:
+		return GlyphFromCode_Format4(font, charCode);
+	default: SKR_assert(0);
+	}
+}
+
+/*
+======== outlines ========
+*/
 
 // Simple glyph flags
 #define SGF_ON_CURVE_POINT 0x01
@@ -384,127 +571,5 @@ SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
 	DrawOutlineWithIntel(&intel, transform, raster, dims);
-	return SKR_SUCCESS;
-}
-
-// -------- cmap table --------
-
-typedef struct {
-	BYTES2 platformID;
-	BYTES2 encodingID;
-	BYTES4 offset;
-} TTF_EncodingRecord;
-
-typedef struct {
-	BYTES2 version;
-	BYTES2 numTables;
-	TTF_EncodingRecord encodingRecords[];
-} TTF_cmap;
-
-typedef struct {
-	BYTES2 format;
-	BYTES2 length;
-	BYTES2 language;
-} TTF_SharedFormatHeader;
-
-typedef struct {
-	BYTES2 format;
-	BYTES2 length;
-	BYTES2 language;
-	BYTES2 segCountX2;
-	BYTES2 searchRange;
-	BYTES2 entrySelector;
-	BYTES2 rangeShift;
-} TTF_Format4;
-
-#include <stdio.h> // TEMP
-
-static void InterpretFormat4(TTF_Format4 const * mapping)
-{
-	int segCount = ru16(mapping->segCountX2) / 2;
-	BYTES2 * baseAddr = (BYTES2 *) mapping + 7;
-	BYTES2 * endCodes = baseAddr;
-	BYTES2 * startCodes = baseAddr + 1 + segCount;
-	BYTES2 * idDeltas = baseAddr + 1 + segCount * 2;
-	BYTES2 * idRangeOffsets = baseAddr + 1 + segCount * 3;
-	BYTES2 * glyphIndexArray = baseAddr + 1 + segCount * 4;
-	for (int i = 0; i < segCount; ++i) {
-		int startCode = ru16(startCodes[i]);
-		int endCode = ru16(endCodes[i]);
-		int idDelta = ru16(idDeltas[i]);
-		int idRangeOffset = ru16(idRangeOffsets[i]);
-		printf("[%u, %u]: d = %u, o = %u\n",
-			startCode, endCode, idDelta, idRangeOffset);
-	}
-}
-
-/*
-lower is better, INT_MAX means ignore completely.
-*/
-static int GetEncodingPriority(TTF_EncodingRecord const * record)
-{
-	int platformID = ru16(record->platformID);
-	int encodingID = ru16(record->encodingID);
-	if (platformID == 0) { // Unicode
-		switch (encodingID) {
-		case 0: return 105;
-		case 1: return 104;
-		case 2: return 103;
-		case 3: return 102;
-		case 4: return 101;
-		default: return INT_MAX;
-		}
-	} else if (platformID == 3) { // Windows
-		switch (encodingID) {
-		case 0: return 203;
-		case 1: return 202;
-		case 10: return 201;
-		default: return INT_MAX;
-		}
-	} else {
-		return INT_MAX;
-	}
-}
-
-static int IsSupportedFormat(BYTES1 * cmapAddr, TTF_EncodingRecord const * record)
-{
-	/*
-	Wanted Formats: 4, 6, 12
-	*/
-	BYTES1 * addr = cmapAddr + ru32(record->offset);
-	int format = ru16(*(BYTES2 *) addr);
-	printf("Got format %d.\n", format);
-	switch (format) {
-	case 4: return 1;
-	default: return 0;
-	}
-}
-
-SKR_Status skrLoadCMap(SKR_Font const * font)
-{
-	BYTES1 * cmapAddr = (BYTES1 *) font->data + font->cmap.offset;
-	TTF_cmap * cmap = (TTF_cmap *) cmapAddr;
-
-	uint16_t version = ru16(cmap->version);
-	if (version != 0) return SKR_FAILURE;
-
-	TTF_EncodingRecord const * record;
-	int bestPriority = INT_MAX;
-	int numTables = ru16(cmap->numTables);
-	for (int i = 0; i < numTables; ++i) {
-		TTF_EncodingRecord const * contender = &cmap->encodingRecords[i];
-		int priority = GetEncodingPriority(contender);
-
-		if (priority >= bestPriority) continue;
-		if (!IsSupportedFormat(cmapAddr, contender)) continue;
-
-		record = contender;
-		bestPriority = priority;
-	}
-	if (bestPriority == INT_MAX) return SKR_FAILURE;
-
-	TTF_Format4 const * format = (TTF_Format4 const *) (cmapAddr + ru32(record->offset));
-	InterpretFormat4(format);
-
 	return SKR_SUCCESS;
 }
