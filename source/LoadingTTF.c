@@ -195,8 +195,8 @@ static SKR_Status Parse_cmap_format4(SKR_Font * font, unsigned long offset)
 	fmt4->segCount = segCountX2 / 2;
 
 	unsigned long baseOffset = (BYTES1 *) table - (BYTES1 *) font->data;
-	fmt4->endCodes = baseOffset;
-	fmt4->startCodes = fmt4->endCodes + 2 + segCountX2;
+	fmt4->endCodes = baseOffset + 14;
+	fmt4->startCodes = fmt4->endCodes + segCountX2 + 2;
 	fmt4->idDeltas = fmt4->startCodes + segCountX2;
 	fmt4->idRangeOffsets = fmt4->idDeltas + segCountX2;
 

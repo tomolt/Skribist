@@ -102,11 +102,11 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 int main(int argc, char const *argv[])
 {
 	if (argc != 2) {
-		fprintf(stderr, "usage: %s <glyph>\n", argv[0]);
+		fprintf(stderr, "usage: %s <char>\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	Glyph glyph = atol(argv[1]);
+	int charCode = argv[1][0];
 
 	int ret;
 	SKR_Status s = SKR_SUCCESS;
@@ -135,8 +135,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Glyph glyphH = skrGlyphFromCode(&font, 'h');
-	printf("Glyph for 'h': %lu\n", glyphH);
+	Glyph glyph = skrGlyphFromCode(&font, charCode);
 
 	SKR_Transform transform1 = { 64.0, 64.0, 0.0, 0.0 };
 
