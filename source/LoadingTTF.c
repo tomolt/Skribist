@@ -53,6 +53,8 @@ static SKR_Status ExtractOffsets(SKR_Font * font)
 	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "hhea", &font->hhea);
 	if (s) return s;
+	s = ScanForOffsetEntry(offt, &cur, "hmtx", &font->hmtx);
+	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "loca", &font->loca);
 	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "maxp", &font->maxp);
@@ -276,6 +278,28 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 	if (s) return s;
 	s = Parse_cmap(font);
 	return s;
+}
+
+/*
+======== glyph positioning ========
+*/
+
+SKR_Status skrGetHorMetrics(SKR_Font const * font,
+	Glyph glyph, SKR_HorMetrics * metrics)
+{
+	if (!(glyph < font->numGlyphs)) return SKR_FAILURE;
+	BYTES2 * hmtxAddr = (BYTES2 *) ((BYTES1 *) font->data + font->hmtx.offset);
+	if (glyph < font->numberOfHMetrics) {
+		BYTES2 * addr = &hmtxAddr[glyph * 2];
+		metrics->advanceWidth = ru16(addr[0]);
+		metrics->leftSideBearing = ri16(addr[1]);
+		return SKR_SUCCESS;
+	} else {
+		BYTES2 * addr = &hmtxAddr[(font->numberOfHMetrics - 1) * 2];
+		metrics->advanceWidth = ru16(addr[0]);
+		metrics->leftSideBearing = ri16((addr + 2)[glyph - font->numberOfHMetrics]);
+		return SKR_SUCCESS;
+	}
 }
 
 /*

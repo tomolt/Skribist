@@ -28,7 +28,7 @@ typedef struct {
 	void const * data;
 	unsigned long length;
 
-	SKR_TTF_Table cmap, glyf, head, hhea, loca, maxp;
+	SKR_TTF_Table cmap, glyf, head, hhea, hmtx, loca, maxp;
 
 	short unitsPerEm, indexToLocFormat, numGlyphs;
 
@@ -40,6 +40,11 @@ typedef struct {
 	short lineGap;
 	unsigned short numberOfHMetrics;
 } SKR_Font;
+
+typedef struct {
+	unsigned short advanceWidth;
+	short leftSideBearing;
+} SKR_HorMetrics;
 
 typedef struct {
 	long width, height;
@@ -65,6 +70,9 @@ void skrInitializeLibrary(void);
 SKR_Status skrInitializeFont(SKR_Font * font);
 
 Glyph skrGlyphFromCode(SKR_Font const * font, int charCode);
+
+SKR_Status skrGetHorMetrics(SKR_Font const * font,
+	Glyph glyph, SKR_HorMetrics * metrics);
 
 SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
 	SKR_Transform transform, SKR_Bounds * bounds);
