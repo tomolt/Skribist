@@ -28,7 +28,7 @@ typedef struct {
 	void const * data;
 	unsigned long length;
 
-	SKR_TTF_Table cmap, glyf, head, loca, maxp;
+	SKR_TTF_Table cmap, glyf, head, hhea, loca, maxp;
 
 	short unitsPerEm, indexToLocFormat, numGlyphs;
 
@@ -36,6 +36,9 @@ typedef struct {
 	union {
 		SKR_cmap_format4 format4;
 	} mapping;
+
+	short lineGap;
+	unsigned short numberOfHMetrics;
 } SKR_Font;
 
 typedef struct {

@@ -51,6 +51,8 @@ static SKR_Status ExtractOffsets(SKR_Font * font)
 	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "head", &font->head);
 	if (s) return s;
+	s = ScanForOffsetEntry(offt, &cur, "hhea", &font->hhea);
+	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "loca", &font->loca);
 	if (s) return s;
 	s = ScanForOffsetEntry(offt, &cur, "maxp", &font->maxp);
@@ -89,6 +91,32 @@ static SKR_Status Parse_head(SKR_Font * font)
 
 typedef struct {
 	BYTES4 version;
+	BYTES2 ascender;
+	BYTES2 descender;
+	BYTES2 lineGap;
+	BYTES2 advanceWidthMax;
+	BYTES2 minLeftSideBearing;
+	BYTES2 minRightSideBearing;
+	BYTES2 xMaxExtent;
+	BYTES2 caretSlopeRise;
+	BYTES2 caretSlopeRun;
+	BYTES2 caretOffset;
+	BYTES2 reserved1, reserved2, reserved3, reserved4;
+	BYTES2 metricDataFormat;
+	BYTES2 numberOfHMetrics;
+} TTF_hhea;
+
+static SKR_Status Parse_hhea(SKR_Font * font)
+{
+	void const * addr = (BYTES1 *) font->data + font->hhea.offset;
+	TTF_hhea const * hhea = (TTF_hhea const *) addr;
+	font->lineGap = ri16(hhea->lineGap);
+	font->numberOfHMetrics = ru16(hhea->numberOfHMetrics);
+	return SKR_SUCCESS;
+}
+
+typedef struct {
+	BYTES4 version;
 	BYTES2 numGlyphs;
 	BYTES2 maxPoints;
 	BYTES2 maxContours;
@@ -108,7 +136,7 @@ typedef struct {
 static SKR_Status Parse_maxp(SKR_Font * font)
 {
 	void const * addr = (BYTES1 *) font->data + font->maxp.offset;
-	TTF_maxp *maxp = (TTF_maxp *) addr;
+	TTF_maxp const * maxp = (TTF_maxp const *) addr;
 	if (ru32(maxp->version) != 0x00010000)
 		return SKR_FAILURE;
 	font->numGlyphs = ru16(maxp->numGlyphs);
@@ -241,6 +269,8 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 	s = ExtractOffsets(font);
 	if (s) return s;
 	s = Parse_head(font);
+	if (s) return s;
+	s = Parse_hhea(font);
 	if (s) return s;
 	s = Parse_maxp(font);
 	if (s) return s;
