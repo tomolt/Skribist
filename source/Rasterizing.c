@@ -1,3 +1,19 @@
+static double CalcStepSize(double diff)
+{
+	if (diff == 0.0) return 0.0;
+	return fabs(1.0 / diff);
+}
+
+static double FindFirstCrossing(double beg, double diff, double stepSize)
+{
+	if (stepSize == 0.0) return 9.9; // return anything >= 1.0
+	if (diff > 0.0) {
+		return stepSize * (ceil(beg) - beg);
+	} else {
+		return stepSize * (beg - floor(beg));
+	}
+}
+
 static void RasterizeDot(
 	long qbx, long qby, long qex, long qey,
 	RasterCell * restrict dest, SKR_Dimensions dims)
@@ -35,34 +51,15 @@ orders them based on the variable scalar in the line equation.
 
 static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
 {
-	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
+	double dx = line.end.x - line.beg.x;
+	double dy = line.end.y - line.beg.y;
 
-	double sx, sy; // step size along each axis
-	double xt, yt; // t of next vertical / horizontal intersection
-
-	if (diff.x != 0.0) {
-		sx = fabs(1.0 / diff.x);
-		if (diff.x > 0.0) {
-			xt = sx * (ceil(line.beg.x) - line.beg.x);
-		} else {
-			xt = sx * (line.beg.x - floor(line.beg.x));
-		}
-	} else {
-		sx = 0.0;
-		xt = 9.9;
-	}
-
-	if (diff.y != 0.0) {
-		sy = fabs(1.0 / diff.y);
-		if (diff.y > 0.0) {
-			yt = sy * (ceil(line.beg.y) - line.beg.y);
-		} else {
-			yt = sy * (line.beg.y - floor(line.beg.y));
-		}
-	} else {
-		sy = 0.0;
-		yt = 9.9;
-	}
+	// step size along each axis
+	double sx = CalcStepSize(dx);
+	double sy = CalcStepSize(dy);
+	// t of next vertical / horizontal intersection
+	double xt = FindFirstCrossing(line.beg.x, dx, sx);
+	double yt = FindFirstCrossing(line.beg.y, dy, sy);
 
 	double prev_t = 0.0;
 	long prev_qx = QUANTIZE(line.beg.x);
@@ -70,7 +67,6 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 
 	while (xt < 1.0 || yt < 1.0) {
 		double t;
-
 		if (xt < yt) {
 			t = xt;
 			xt += sx;
@@ -79,10 +75,11 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 			yt += sy;
 		}
 
+		// TODO is this even neccessary?
 		if (t == prev_t) continue;
 
-		long qx = QUANTIZE(line.beg.x + t * diff.x);
-		long qy = QUANTIZE(line.beg.y + t * diff.y);
+		long qx = QUANTIZE(line.beg.x + t * dx);
+		long qy = QUANTIZE(line.beg.y + t * dy);
 
 		RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 
