@@ -24,6 +24,8 @@ static void RasterizeDot(
 	dest[cellIdx].edgeValues[py % 8] += edgeValue;
 }
 
+#define QUANTIZE(x) ((long) ((x) * 1024.0 + 0.5))
+
 /*
 RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
 Its algorithm is actually fairly simple: It computes the exact intervals at
@@ -63,8 +65,8 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 	}
 
 	double prev_t = 0.0;
-	long prev_qx = round(line.beg.x * 1024.0);
-	long prev_qy = round(line.beg.y * 1024.0);
+	long prev_qx = QUANTIZE(line.beg.x);
+	long prev_qy = QUANTIZE(line.beg.y);
 
 	while (xt < 1.0 || yt < 1.0) {
 		double t;
@@ -79,8 +81,8 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 
 		if (t == prev_t) continue;
 
-		long qx = round((line.beg.x + t * diff.x) * 1024.0);
-		long qy = round((line.beg.y + t * diff.y) * 1024.0);
+		long qx = QUANTIZE(line.beg.x + t * diff.x);
+		long qy = QUANTIZE(line.beg.y + t * diff.y);
 
 		RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 
@@ -89,8 +91,8 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 		prev_qy = qy;
 	}
 
-	long qx = round(line.end.x * 1024.0);
-	long qy = round(line.end.y * 1024.0);
+	long qx = QUANTIZE(line.end.x);
+	long qy = QUANTIZE(line.end.y);
 
 	RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 }
