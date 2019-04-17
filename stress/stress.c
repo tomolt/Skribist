@@ -34,6 +34,8 @@ static int read_file(char const *filename, void **addr)
 	return 0;
 }
 
+static long long OutlineCounter;
+
 static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform1)
 {
 	SKR_Bounds bounds;
@@ -54,6 +56,7 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform trans
 	SKR_Status s = skrDrawOutline(font, glyph, transform2, raster, dims);
 
 	if (!s) {
+		++OutlineCounter;
 		skrCastImage(raster, image, dims);
 	}
 
@@ -98,6 +101,7 @@ int main(int argc, char const *argv[])
 
 	time_t startTime, nowTime;
 	time(&startTime);
+	double elapsedTime; // in seconds
 
 	do {
 		for (double size = 6.0; size <= 48.0; size += 2.0) {
@@ -106,8 +110,11 @@ int main(int argc, char const *argv[])
 				draw_outline(&font, glyph, transform);
 			}
 		}
-		time(&nowTime);
-	} while (difftime(nowTime, startTime) < seconds);
+		elapsedTime = difftime(time(&nowTime), startTime);
+	} while (elapsedTime < seconds);
+	printf("SUMMARY:\n");
+	printf("Drew %lld outlines in %f seconds,\n", OutlineCounter, elapsedTime);
+	printf("Resulting in an average speed of %f kHz.\n", OutlineCounter / (elapsedTime * 1000.0));
 
 	free(rawData);
 
