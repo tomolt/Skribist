@@ -166,7 +166,7 @@ void skrCastImage(
 
 			// TODO aligned store
 			char pixels[8];
-			_mm_storeu_si64((__m128i *) pixels, compactValues);
+			_mm_storeu_si64(pixels, compactValues);
 			for (int q = 0; q < 8; ++q) {
 				if (row * 8 + q < dims.height) {
 					dest[(row * 8 + q) * dims.width + col] = pixels[q];
