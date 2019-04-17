@@ -9,6 +9,11 @@
 
 #include <assert.h>
 
+static double time_in_seconds(struct timespec * ts)
+{
+    return (double) ts->tv_sec + (double) ts->tv_nsec / 1000000000.0;
+}
+
 static int read_file(char const *filename, void **addr)
 {
 	FILE *file = fopen(filename, "rw");
@@ -99,8 +104,8 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	time_t startTime, nowTime;
-	time(&startTime);
+	struct timespec startTime, nowTime;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &startTime); // TODO error handling
 	double elapsedTime; // in seconds
 
 	do {
@@ -110,7 +115,9 @@ int main(int argc, char const *argv[])
 				draw_outline(&font, glyph, transform);
 			}
 		}
-		elapsedTime = difftime(time(&nowTime), startTime);
+
+		clock_gettime(CLOCK_MONOTONIC_RAW, &nowTime); // TODO error handling
+		elapsedTime = time_in_seconds(&nowTime) - time_in_seconds(&startTime);
 	} while (elapsedTime < seconds);
 	printf("SUMMARY:\n");
 	printf("Drew %lld outlines in %f seconds,\n", OutlineCounter, elapsedTime);
