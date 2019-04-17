@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 #include <assert.h>
 
@@ -60,8 +61,19 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform trans
 	free(image);
 }
 
-int main()
+int main(int argc, char const *argv[])
 {
+	if (argc != 2) {
+		fprintf(stderr, "usage: stress <seconds>\n");
+		return EXIT_FAILURE;
+	}
+
+	double seconds = atof(argv[1]);
+	if (seconds <= 0.0) {
+		fprintf(stderr, "<seconds> should not be less than or equal 0.\n");
+		return EXIT_FAILURE;
+	}
+
 	int ret;
 	SKR_Status s = SKR_SUCCESS;
 
@@ -84,14 +96,18 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	for (int i = 0; i < 100; ++i) {
+	time_t startTime, nowTime;
+	time(&startTime);
+
+	do {
 		for (double size = 6.0; size <= 48.0; size += 2.0) {
 			for (Glyph glyph = 0; glyph < 500; ++glyph) {
 				SKR_Transform transform = { size, size, 0.0, 0.0 };
 				draw_outline(&font, glyph, transform);
 			}
 		}
-	}
+		time(&nowTime);
+	} while (difftime(nowTime, startTime) < seconds);
 
 	free(rawData);
 
