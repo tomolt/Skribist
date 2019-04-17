@@ -360,7 +360,9 @@ Glyph skrGlyphFromCode(SKR_Font const * font, int charCode)
 	switch (font->mappingFormat) {
 	case 4:
 		return GlyphFromCode_Format4(font, charCode);
-	default: SKR_assert(0);
+	default:
+		SKR_assert(0);
+		return 0;
 	}
 }
 

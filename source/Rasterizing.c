@@ -1,6 +1,6 @@
 static void RasterizeDot(
 	long qbx, long qby, long qex, long qey,
-	RasterCell * dest, SKR_Dimensions dims)
+	RasterCell * restrict dest, SKR_Dimensions dims)
 {
 	// pixel coordinates
 	long px = min(qbx, qex) / 1024;
@@ -18,10 +18,10 @@ static void RasterizeDot(
 	long area = labs(fex - fbx) / 2 + 1024 - max(fex, fbx);
 	long edgeValue = tailValue * area / 1024;
 
-	RasterCell * cell = &dest[dims.width * (py / 8) + px];
+	long cellIdx = dims.width * (py / 8) + px;
 
-	cell->tailValues[py % 8] += tailValue;
-	cell->edgeValues[py % 8] += edgeValue;
+	dest[cellIdx].tailValues[py % 8] += tailValue;
+	dest[cellIdx].edgeValues[py % 8] += edgeValue;
 }
 
 /*
@@ -31,7 +31,7 @@ which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
 */
 
-static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
+static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
 {
 	Point diff = { line.end.x - line.beg.x, line.end.y - line.beg.y };
 
@@ -95,7 +95,7 @@ static void RasterizeLine(Line line, RasterCell * dest, SKR_Dimensions dims)
 	RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 }
 
-static void DrawLine(Line line, RasterCell * dest, SKR_Dimensions dims)
+static void DrawLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
 {
 	RasterizeLine(line, dest, dims);
 }
