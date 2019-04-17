@@ -19,19 +19,25 @@ static void SplitCurve(Curve curve, Curve segments[2])
 	segments[1] = (Curve) { pivot, ctrl1, curve.end };
 }
 
-static void DrawCurve(Curve curve, RasterCell * dest, SKR_Dimensions dims)
+static void DrawCurve(Curve initialCurve, RasterCell * restrict dest, SKR_Dimensions dims)
 {
 	/*
-	TODO replace recursion here with iteration over an explicit stack.
+	Ínstead of recursion we use an explicit stack here.
 	This is to prevent stack overflows from occuring when drawing large text.
+	TODO dynamically (re-)allocate this by the user.
 	*/
-	if (IsFlat(curve, 0.5)) {
-		Line line = { curve.beg, curve.end };
-		DrawLine(line, dest, dims);
-	} else {
-		Curve segments[2];
-		SplitCurve(curve, segments);
-		DrawCurve(segments[0], dest, dims);
-		DrawCurve(segments[1], dest, dims);
+	Curve stack[1000];
+	stack[0] = initialCurve;
+	int top = 1;
+	while (top > 0) {
+		Curve curve = stack[--top];
+		if (IsFlat(curve, 0.5)) {
+			Line line = { curve.beg, curve.end };
+			DrawLine(line, dest, dims);
+		} else {
+			SKR_assert(top + 2 <= 1000);
+			SplitCurve(curve, &stack[top]);
+			top += 2;
+		}
 	}
 }
