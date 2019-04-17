@@ -160,11 +160,13 @@ void skrCastImage(
 			// TODO gamma correction
 			__m128i gammaValues = _mm_srai_epi16(linearValues, 2);
 			gammaValues = _mm_min_epi16(gammaValues, _mm_set1_epi16(255));
+			__m128i compactValues = _mm_packus_epi16(gammaValues, _mm_setzero_si128());
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 
-			short pixels[8];
-			_mm_storeu_si128((__m128i *) pixels, gammaValues);
+			// TODO aligned store
+			char pixels[8];
+			_mm_storeu_si64((__m128i *) pixels, compactValues);
 			for (int q = 0; q < 8; ++q) {
 				if (row * 8 + q < dims.height) {
 					dest[(row * 8 + q) * dims.width + col] = pixels[q];
