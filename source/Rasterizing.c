@@ -14,6 +14,17 @@ static double FindFirstCrossing(double beg, double diff, double stepSize)
 	}
 }
 
+static long skrAbsolute(long value)
+{
+	/*
+	FIXME this abs() workaround depends on long values being 32 bits wide and
+	right shift on signed number being implemented as an arithmetic shift.
+	We should either not rely on these things ore at least check for them.
+	*/
+	uint32_t mask = value >> 31;
+	return (value ^ mask) + (mask & 1);
+}
+
 static void RasterizeDot(
 	long qbx, long qby, long qex, long qey,
 	RasterCell * restrict dest, SKR_Dimensions dims)
@@ -37,7 +48,7 @@ static void RasterizeDot(
 	long fey = qey - py * 1024;
 
 	long windingAndCover = fey - fby; // winding * cover
-	long area = labs(fex - fbx) / 2 + 1024 - max(fex, fbx);
+	long area = skrAbsolute(fex - fbx) / 2 + 1024 - max(fex, fbx);
 
 	tailValue += windingAndCover;
 	edgeValue += windingAndCover * area / 1024;
