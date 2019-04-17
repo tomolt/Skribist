@@ -21,23 +21,29 @@ static void RasterizeDot(
 	// pixel coordinates
 	long px = min(qbx, qex) / 1024;
 	long py = min(qby, qey) / 1024;
+
+	SKR_assert(px >= 0 && px < dims.width);
+	SKR_assert(py >= 0 && py < dims.height);
+
+	long cellIdx = dims.width * (py / 8) + px;
+
+	short tailValue = dest[cellIdx].tailValues[py % 8];
+	short edgeValue = dest[cellIdx].edgeValues[py % 8];
+
 	// fractional beg & end coordinates
 	long fbx = qbx - px * 1024;
 	long fby = qby - py * 1024;
 	long fex = qex - px * 1024;
 	long fey = qey - py * 1024;
 
-	SKR_assert(px >= 0 && px < dims.width);
-	SKR_assert(py >= 0 && py < dims.height);
-
-	long tailValue = fey - fby; // winding * cover
+	long windingAndCover = fey - fby; // winding * cover
 	long area = labs(fex - fbx) / 2 + 1024 - max(fex, fbx);
-	long edgeValue = tailValue * area / 1024;
 
-	long cellIdx = dims.width * (py / 8) + px;
+	tailValue += windingAndCover;
+	edgeValue += windingAndCover * area / 1024;
 
-	dest[cellIdx].tailValues[py % 8] += tailValue;
-	dest[cellIdx].edgeValues[py % 8] += edgeValue;
+	dest[cellIdx].tailValues[py % 8] = tailValue;
+	dest[cellIdx].edgeValues[py % 8] = edgeValue;
 }
 
 #define QUANTIZE(x) ((long) ((x) * 1024.0 + 0.5))
@@ -61,7 +67,6 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 	double xt = FindFirstCrossing(line.beg.x, dx, sx);
 	double yt = FindFirstCrossing(line.beg.y, dy, sy);
 
-	double prev_t = 0.0;
 	long prev_qx = QUANTIZE(line.beg.x);
 	long prev_qy = QUANTIZE(line.beg.y);
 
@@ -75,15 +80,11 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 			yt += sy;
 		}
 
-		// TODO is this even neccessary?
-		if (t == prev_t) continue;
-
 		long qx = QUANTIZE(line.beg.x + t * dx);
 		long qy = QUANTIZE(line.beg.y + t * dy);
 
 		RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
 
-		prev_t = t;
 		prev_qx = qx;
 		prev_qy = qy;
 	}
