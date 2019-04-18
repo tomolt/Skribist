@@ -84,8 +84,8 @@ typedef struct {
 
 static SKR_Status Parse_head(SKR_Font * restrict font)
 {
-	void const * restrict addr = (BYTES1 *) font->data + font->head.offset;
-	TTF_head * restrict head = (TTF_head *) addr;
+	TTF_head * restrict head = (TTF_head *)
+		((BYTES1 *) font->data + font->head.offset);
 	font->unitsPerEm = ru16(head->unitsPerEm);
 	font->indexToLocFormat = ri16(head->indexToLocFormat);
 	return (font->indexToLocFormat == 0 || font->indexToLocFormat == 1) ?
@@ -111,8 +111,8 @@ typedef struct {
 
 static SKR_Status Parse_hhea(SKR_Font * restrict font)
 {
-	void const * restrict addr = (BYTES1 *) font->data + font->hhea.offset;
-	TTF_hhea const * restrict hhea = (TTF_hhea const *) addr;
+	TTF_hhea const * restrict hhea = (TTF_hhea const *)
+		((BYTES1 *) font->data + font->hhea.offset);
 	font->lineGap = ri16(hhea->lineGap);
 	font->numberOfHMetrics = ru16(hhea->numberOfHMetrics);
 	return SKR_SUCCESS;
@@ -138,8 +138,8 @@ typedef struct {
 
 static SKR_Status Parse_maxp(SKR_Font * restrict font)
 {
-	void const * restrict addr = (BYTES1 *) font->data + font->maxp.offset;
-	TTF_maxp const * restrict maxp = (TTF_maxp const *) addr;
+	TTF_maxp const * restrict maxp = (TTF_maxp const *)
+		((BYTES1 *) font->data + font->maxp.offset);
 	if (ru32(maxp->version) != 0x00010000)
 		return SKR_FAILURE;
 	font->numGlyphs = ru16(maxp->numGlyphs);
@@ -202,7 +202,8 @@ static int GetEncodingPriority(TTF_EncodingRecord const * restrict record)
 	}
 }
 
-static int IsSupportedFormat(BYTES1 * restrict cmapAddr, TTF_EncodingRecord const * restrict record)
+static int IsSupportedFormat(BYTES1 * restrict cmapAddr,
+	TTF_EncodingRecord const * restrict record)
 {
 	/* Wanted Formats: 4, 6, 12 */
 	BYTES1 * restrict addr = cmapAddr + ru32(record->offset);
@@ -236,19 +237,17 @@ static SKR_Status Parse_cmap_format4(SKR_Font * restrict font, unsigned long off
 
 static SKR_Status Parse_cmap(SKR_Font * restrict font)
 {
-	SKR_Status s;
+	TTF_cmap * restrict cmap = (TTF_cmap *)
+		((BYTES1 *) font->data + font->cmap.offset);
 
-	BYTES1 * cmapAddr = (BYTES1 *) font->data + font->cmap.offset;
-	TTF_cmap * cmap = (TTF_cmap *) cmapAddr;
-
-	s = ru16(cmap->version) == 0 ? SKR_SUCCESS : SKR_FAILURE;
+	SKR_Status s = ru16(cmap->version) == 0 ? SKR_SUCCESS : SKR_FAILURE;
 	if (s) return s;
 
-	TTF_EncodingRecord const * record;
+	TTF_EncodingRecord const * restrict record;
 	int bestPriority = INT_MAX;
 	int numTables = ru16(cmap->numTables);
 	for (int i = 0; i < numTables; ++i) {
-		TTF_EncodingRecord const * contender = &cmap->encodingRecords[i];
+		TTF_EncodingRecord const * restrict contender = &cmap->encodingRecords[i];
 		int priority = GetEncodingPriority(contender);
 
 		if (priority >= bestPriority) continue;
@@ -289,14 +288,14 @@ SKR_Status skrGetHorMetrics(SKR_Font const * restrict font,
 	Glyph glyph, SKR_HorMetrics * restrict metrics)
 {
 	if (!(glyph < font->numGlyphs)) return SKR_FAILURE;
-	BYTES2 * hmtxAddr = (BYTES2 *) ((BYTES1 *) font->data + font->hmtx.offset);
+	BYTES2 * restrict hmtxAddr = (BYTES2 *) ((BYTES1 *) font->data + font->hmtx.offset);
 	if (glyph < font->numberOfHMetrics) {
-		BYTES2 * addr = &hmtxAddr[glyph * 2];
+		BYTES2 * restrict addr = &hmtxAddr[glyph * 2];
 		metrics->advanceWidth = ru16(addr[0]);
 		metrics->leftSideBearing = ri16(addr[1]);
 		return SKR_SUCCESS;
 	} else {
-		BYTES2 * addr = &hmtxAddr[(font->numberOfHMetrics - 1) * 2];
+		BYTES2 * restrict addr = &hmtxAddr[(font->numberOfHMetrics - 1) * 2];
 		metrics->advanceWidth = ru16(addr[0]);
 		metrics->leftSideBearing = ri16((addr + 2)[glyph - font->numberOfHMetrics]);
 		return SKR_SUCCESS;
@@ -308,7 +307,7 @@ SKR_Status skrGetHorMetrics(SKR_Font const * restrict font,
 */
 
 static int FindSegment_Format4(int segCount,
-	BYTES2 * startCodes, BYTES2 * endCodes, int charCode)
+	BYTES2 * restrict startCodes, BYTES2 * restrict endCodes, int charCode)
 {
 	/*
 	TODO upgrade to binary search here.
