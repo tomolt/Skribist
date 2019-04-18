@@ -145,6 +145,9 @@ void skrCastImage(
 {
 	long width = (dims.width + 7) / 8; // in cells
 
+	__m128i c1024 = _mm_set1_epi16(1024);
+	__m128i c255 = _mm_set1_epi16(255);
+
 	for (long col = 0; col < width; ++col) {
 
 		__m128i accumulators = _mm_setzero_si128();
@@ -159,19 +162,18 @@ void skrCastImage(
 
 			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
 			__m128i linearValues = _mm_min_epi16(_mm_max_epi16(values,
-				_mm_setzero_si128()), _mm_set1_epi16(1024));
+				_mm_setzero_si128()), c1024);
 			// TODO gamma correction
 			__m128i gammaValues = _mm_srai_epi16(linearValues, 2);
-			gammaValues = _mm_min_epi16(gammaValues, _mm_set1_epi16(255));
+			gammaValues = _mm_min_epi16(gammaValues, c255);
 			__m128i compactValues = _mm_packus_epi16(gammaValues, _mm_setzero_si128());
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 
+			int togo = dims.width - col * 8;
 			__attribute__((aligned(8))) char pixels[8];
 			_mm_storel_epi64((__m128i *) pixels, compactValues);
-			for (int q = 0; q < min(dims.width - col * 8, 8); ++q) {
-				dest[dims.width * row + col * 8 + q] = pixels[q];
-			}
+			memcpy(&dest[dims.width * row + col * 8], pixels, min(togo, 8));
 		}
 		// TODO assertion
 	}
