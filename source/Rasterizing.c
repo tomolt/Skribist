@@ -36,10 +36,11 @@ static void RasterizeDot(
 	SKR_assert(px >= 0 && px < dims.width);
 	SKR_assert(py >= 0 && py < dims.height);
 
-	long cellIdx = dims.width * (py / 8) + px;
+	long width = (dims.width + 7) / 8; // in cells
+	long cellIdx = width * py + (px / 8);
 
-	short tailValue = dest[cellIdx].tailValues[py % 8];
-	short edgeValue = dest[cellIdx].edgeValues[py % 8];
+	short tailValue = dest[cellIdx].tailValues[px % 8];
+	short edgeValue = dest[cellIdx].edgeValues[px % 8];
 
 	// fractional beg & end coordinates
 	long fbx = qbx - px * 1024;
@@ -47,14 +48,14 @@ static void RasterizeDot(
 	long fex = qex - px * 1024;
 	long fey = qey - py * 1024;
 
-	long windingAndCover = fey - fby; // winding * cover
-	long area = skrAbsolute(fex - fbx) / 2 + 1024 - max(fex, fbx);
+	long windingAndCover = -(fex - fbx); // winding * cover
+	long area = skrAbsolute(fey - fby) / 2 + 1024 - max(fey, fby);
 
 	tailValue += windingAndCover;
 	edgeValue += windingAndCover * area / 1024;
 
-	dest[cellIdx].tailValues[py % 8] = tailValue;
-	dest[cellIdx].edgeValues[py % 8] = edgeValue;
+	dest[cellIdx].tailValues[px % 8] = tailValue;
+	dest[cellIdx].edgeValues[px % 8] = edgeValue;
 }
 
 #define QUANTIZE(x) ((long) ((x) * 1024.0 + 0.5))
@@ -134,7 +135,7 @@ void skrInitializeLibrary(void)
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims)
 {
-	return (dims.height + 7) / 8 * dims.width;
+	return (dims.width + 7) / 8 * dims.height;
 }
 
 void skrCastImage(
@@ -142,13 +143,15 @@ void skrCastImage(
 	unsigned char * restrict dest,
 	SKR_Dimensions dims)
 {
-	for (long row = 0; row < (dims.height + 7) / 8; ++row) {
+	long width = (dims.width + 7) / 8; // in cells
+
+	for (long col = 0; col < width; ++col) {
 
 		__m128i accumulators = _mm_setzero_si128();
 
-		for (long col = 0; col < dims.width; ++col) {
+		for (long row = 0; row < dims.height; ++row) {
 
-			long cellIdx = row * dims.width + col;
+			long cellIdx = width * row + col;
 			__m128i edgeValues = _mm_loadu_si128(
 				(__m128i const *) source[cellIdx].edgeValues);
 			__m128i tailValues = _mm_loadu_si128(
@@ -164,10 +167,10 @@ void skrCastImage(
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 
-			__attribute__((aligned(16))) char pixels[8];
+			__attribute__((aligned(8))) char pixels[8];
 			_mm_storel_epi64((__m128i *) pixels, compactValues);
-			for (int q = 0; q < min(dims.height - row * 8, 8); ++q) {
-				dest[(row * 8 + q) * dims.width + col] = pixels[q];
+			for (int q = 0; q < min(dims.width - col * 8, 8); ++q) {
+				dest[dims.width * row + col * 8 + q] = pixels[q];
 			}
 		}
 		// TODO assertion
