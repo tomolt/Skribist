@@ -237,8 +237,8 @@ static SKR_Status Parse_cmap_format4(SKR_Font * restrict font, unsigned long off
 
 static SKR_Status Parse_cmap(SKR_Font * restrict font)
 {
-	TTF_cmap * restrict cmap = (TTF_cmap *)
-		((BYTES1 *) font->data + font->cmap.offset);
+	BYTES1 * restrict cmapAddr = (BYTES1 *) font->data + font->cmap.offset;
+	TTF_cmap * restrict cmap = (TTF_cmap *) cmapAddr;
 
 	SKR_Status s = ru16(cmap->version) == 0 ? SKR_SUCCESS : SKR_FAILURE;
 	if (s) return s;
