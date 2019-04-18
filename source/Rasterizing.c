@@ -164,13 +164,10 @@ void skrCastImage(
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 
-			// TODO aligned store
-			char pixels[8];
-			_mm_storeu_si64(pixels, compactValues);
-			for (int q = 0; q < 8; ++q) {
-				if (row * 8 + q < dims.height) {
-					dest[(row * 8 + q) * dims.width + col] = pixels[q];
-				}
+			__attribute__((aligned(16))) char pixels[8];
+			_mm_storel_epi64((__m128i *) pixels, compactValues);
+			for (int q = 0; q < min(dims.height - row * 8, 8); ++q) {
+				dest[(row * 8 + q) * dims.width + col] = pixels[q];
 			}
 		}
 		// TODO assertion
