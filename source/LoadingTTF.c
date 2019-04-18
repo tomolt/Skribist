@@ -40,10 +40,11 @@ static SKR_Status ScanForOffsetEntry(
 	}
 }
 
-static SKR_Status ExtractOffsets(SKR_Font * font)
+static SKR_Status ExtractOffsets(SKR_Font * restrict font)
 {
 	SKR_Status s = SKR_SUCCESS;
-	TFF_OffsetTable const * offt = (TFF_OffsetTable const *) font->data;
+	TFF_OffsetTable const * restrict offt =
+		(TFF_OffsetTable const *) font->data;
 	int cur = 0;
 	s = ScanForOffsetEntry(offt, &cur, "cmap", &font->cmap);
 	if (s) return s;
@@ -81,10 +82,10 @@ typedef struct {
 	BYTES2 glyphDataFormat;
 } TTF_head;
 
-static SKR_Status Parse_head(SKR_Font * font)
+static SKR_Status Parse_head(SKR_Font * restrict font)
 {
-	void const * addr = (BYTES1 *) font->data + font->head.offset;
-	TTF_head *head = (TTF_head *) addr;
+	void const * restrict addr = (BYTES1 *) font->data + font->head.offset;
+	TTF_head * restrict head = (TTF_head *) addr;
 	font->unitsPerEm = ru16(head->unitsPerEm);
 	font->indexToLocFormat = ri16(head->indexToLocFormat);
 	return (font->indexToLocFormat == 0 || font->indexToLocFormat == 1) ?
@@ -108,10 +109,10 @@ typedef struct {
 	BYTES2 numberOfHMetrics;
 } TTF_hhea;
 
-static SKR_Status Parse_hhea(SKR_Font * font)
+static SKR_Status Parse_hhea(SKR_Font * restrict font)
 {
-	void const * addr = (BYTES1 *) font->data + font->hhea.offset;
-	TTF_hhea const * hhea = (TTF_hhea const *) addr;
+	void const * restrict addr = (BYTES1 *) font->data + font->hhea.offset;
+	TTF_hhea const * restrict hhea = (TTF_hhea const *) addr;
 	font->lineGap = ri16(hhea->lineGap);
 	font->numberOfHMetrics = ru16(hhea->numberOfHMetrics);
 	return SKR_SUCCESS;
@@ -135,10 +136,10 @@ typedef struct {
 	BYTES2 maxComponentDepth;
 } TTF_maxp;
 
-static SKR_Status Parse_maxp(SKR_Font * font)
+static SKR_Status Parse_maxp(SKR_Font * restrict font)
 {
-	void const * addr = (BYTES1 *) font->data + font->maxp.offset;
-	TTF_maxp const * maxp = (TTF_maxp const *) addr;
+	void const * restrict addr = (BYTES1 *) font->data + font->maxp.offset;
+	TTF_maxp const * restrict maxp = (TTF_maxp const *) addr;
 	if (ru32(maxp->version) != 0x00010000)
 		return SKR_FAILURE;
 	font->numGlyphs = ru16(maxp->numGlyphs);
@@ -176,7 +177,7 @@ typedef struct {
 /*
 lower is better, INT_MAX means ignore completely.
 */
-static int GetEncodingPriority(TTF_EncodingRecord const * record)
+static int GetEncodingPriority(TTF_EncodingRecord const * restrict record)
 {
 	int platformID = ru16(record->platformID);
 	int encodingID = ru16(record->encodingID);
@@ -201,24 +202,24 @@ static int GetEncodingPriority(TTF_EncodingRecord const * record)
 	}
 }
 
-static int IsSupportedFormat(BYTES1 * cmapAddr, TTF_EncodingRecord const * record)
+static int IsSupportedFormat(BYTES1 * restrict cmapAddr, TTF_EncodingRecord const * restrict record)
 {
 	/* Wanted Formats: 4, 6, 12 */
-	BYTES1 * addr = cmapAddr + ru32(record->offset);
-	int format = ru16(*(BYTES2 *) addr);
+	BYTES1 * restrict addr = cmapAddr + ru32(record->offset);
+	int format = ru16(*(BYTES2 * restrict) addr);
 	switch (format) {
 	case 4: return 1;
 	default: return 0;
 	}
 }
 
-static SKR_Status Parse_cmap_format4(SKR_Font * font, unsigned long offset)
+static SKR_Status Parse_cmap_format4(SKR_Font * restrict font, unsigned long offset)
 {
 	font->mappingFormat = 4;
 
-	BYTES1 * fmt4Addr = (BYTES1 *) font->data + font->cmap.offset + offset;
-	TTF_cmap_format4 const * table = (TTF_cmap_format4 const *) fmt4Addr;
-	SKR_cmap_format4 * fmt4 = &font->mapping.format4;
+	BYTES1 * restrict fmt4Addr = (BYTES1 *) font->data + font->cmap.offset + offset;
+	TTF_cmap_format4 const * restrict table = (TTF_cmap_format4 const *) fmt4Addr;
+	SKR_cmap_format4 * restrict fmt4 = &font->mapping.format4;
 
 	int segCountX2 = ru16(table->segCountX2);
 	SKR_assert(segCountX2 % 2 == 0);
@@ -233,7 +234,7 @@ static SKR_Status Parse_cmap_format4(SKR_Font * font, unsigned long offset)
 	return SKR_SUCCESS;
 }
 
-static SKR_Status Parse_cmap(SKR_Font * font)
+static SKR_Status Parse_cmap(SKR_Font * restrict font)
 {
 	SKR_Status s;
 
@@ -265,7 +266,7 @@ static SKR_Status Parse_cmap(SKR_Font * font)
 	return s;
 }
 
-SKR_Status skrInitializeFont(SKR_Font * font)
+SKR_Status skrInitializeFont(SKR_Font * restrict font)
 {
 	SKR_Status s;
 	s = ExtractOffsets(font);
@@ -284,8 +285,8 @@ SKR_Status skrInitializeFont(SKR_Font * font)
 ======== glyph positioning ========
 */
 
-SKR_Status skrGetHorMetrics(SKR_Font const * font,
-	Glyph glyph, SKR_HorMetrics * metrics)
+SKR_Status skrGetHorMetrics(SKR_Font const * restrict font,
+	Glyph glyph, SKR_HorMetrics * restrict metrics)
 {
 	if (!(glyph < font->numGlyphs)) return SKR_FAILURE;
 	BYTES2 * hmtxAddr = (BYTES2 *) ((BYTES1 *) font->data + font->hmtx.offset);
@@ -326,9 +327,9 @@ static int FindSegment_Format4(int segCount,
 	return -1;
 }
 
-static Glyph GlyphFromCode_Format4(SKR_Font const * font, int charCode)
+static Glyph GlyphFromCode_Format4(SKR_Font const * restrict font, int charCode)
 {
-	SKR_cmap_format4 const * mapping = &font->mapping.format4;
+	SKR_cmap_format4 const * restrict mapping = &font->mapping.format4;
 	BYTES2 * startCodes = (BYTES2 *) ((BYTES1 *) font->data + mapping->startCodes);
 	BYTES2 * endCodes = (BYTES2 *) ((BYTES1 *) font->data + mapping->endCodes);
 	BYTES2 * idDeltas = (BYTES2 *) ((BYTES1 *) font->data + mapping->idDeltas);
@@ -355,7 +356,7 @@ static Glyph GlyphFromCode_Format4(SKR_Font const * font, int charCode)
 	return glyph > 0 ? (uint16_t) (glyph + idDelta) : 0;
 }
 
-Glyph skrGlyphFromCode(SKR_Font const * font, int charCode)
+Glyph skrGlyphFromCode(SKR_Font const * restrict font, int charCode)
 {
 	switch (font->mappingFormat) {
 	case 4:
@@ -416,7 +417,7 @@ typedef struct {
 } ShHdr;
 
 // TODO GetOutlineRange instead
-static SKR_Status GetOutlineAddr(SKR_Font const * font, Glyph glyph, BYTES1 ** addr)
+static SKR_Status GetOutlineAddr(SKR_Font const * restrict font, Glyph glyph, BYTES1 * restrict * restrict addr)
 {
 	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
 	int n = font->numGlyphs + 1;
@@ -433,14 +434,14 @@ static SKR_Status GetOutlineAddr(SKR_Font const * font, Glyph glyph, BYTES1 ** a
 	return SKR_SUCCESS;
 }
 
-SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
-	SKR_Transform transform, SKR_Bounds * bounds)
+SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
+	SKR_Transform transform, SKR_Bounds * restrict bounds)
 {
 	SKR_Status s;
 	BYTES1 * outlineAddr;
 	s = GetOutlineAddr(font, glyph, &outlineAddr);
 	if (s) return s;
-	ShHdr const * sh = (ShHdr const *) outlineAddr;
+	ShHdr const * restrict sh = (ShHdr const *) outlineAddr;
 
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
@@ -461,7 +462,7 @@ So instead, we run a 'scouting' phase before the actual loading stage.
 
 */
 
-SKR_Status ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * intel)
+SKR_Status ScoutOutline(BYTES1 * outlineAddr, OutlineIntel * restrict intel)
 {
 	BYTES1 * glyfCursor = outlineAddr;
 
@@ -513,7 +514,7 @@ complicated. ExtendContour() implements this using a simple finite state machine
 
 */
 
-static void ExtendContour(ContourFSM * fsm, Point newNode, int onCurve)
+static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve)
 {
 	switch (fsm->state) {
 	case 0:
@@ -561,7 +562,7 @@ shifting the relevant flags by 1 we can also use this function for
 y coordinates.
 
 */
-static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
+static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 * restrict * restrict ptr, long prev)
 {
 	long co = prev;
 	if (flags & SGF_SHORT_X_COORD) {
@@ -573,14 +574,14 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 ** ptr, long prev)
 			(*ptr) += 1;
 		}
 	} else if (!(flags & SGF_REUSE_PREV_X)) {
-		co += ri16(*(BYTES2 *) *ptr);
+		co += ri16(*(BYTES2 * restrict) *ptr);
 		(*ptr) += 2;
 	}
 	return co;
 }
 
-static void DrawOutlineWithIntel(OutlineIntel * intel,
-	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
+static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
+	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
@@ -619,11 +620,11 @@ static void DrawOutlineWithIntel(OutlineIntel * intel,
 	}
 }
 
-SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
-	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims)
+SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
+	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	SKR_Status s;
-	BYTES1 * outlineAddr;
+	BYTES1 * restrict outlineAddr;
 	s = GetOutlineAddr(font, glyph, &outlineAddr);
 	if (s) return s;
 	OutlineIntel intel = { 0 };
