@@ -54,7 +54,7 @@ typedef struct {
 The transformation order goes: first scale, then move.
 */
 typedef struct {
-	double xScale, yScale, xMove, yMove;
+	float xScale, yScale, xMove, yMove;
 } SKR_Transform;
 
 typedef struct {

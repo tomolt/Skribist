@@ -1,4 +1,4 @@
-static double ManhattanDistance(Point a, Point b)
+static float ManhattanDistance(Point a, Point b)
 {
 	return gabs(a.x - b.x) + gabs(a.y - b.y);
 }
@@ -6,7 +6,7 @@ static double ManhattanDistance(Point a, Point b)
 static int IsFlat(Curve curve, float flatness)
 {
 	Point mid = Midpoint(curve.beg, curve.end);
-	double dist = ManhattanDistance(curve.ctrl, mid);
+	float dist = ManhattanDistance(curve.ctrl, mid);
 	return dist <= flatness;
 }
 
@@ -31,9 +31,8 @@ static void DrawCurve(Curve initialCurve, RasterCell * restrict dest, SKR_Dimens
 	int top = 1;
 	while (top > 0) {
 		Curve curve = stack[--top];
-		if (IsFlat(curve, 0.5)) {
-			Line line = { curve.beg, curve.end };
-			DrawLine(line, dest, dims);
+		if (IsFlat(curve, 0.5f)) {
+			DrawLine(*(Line *) &curve, dest, dims);
 		} else {
 			SKR_assert(top + 2 <= 1000);
 			SplitCurve(curve, &stack[top]);

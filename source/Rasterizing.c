@@ -1,16 +1,16 @@
-static double CalcStepSize(double diff)
+static float CalcStepSize(float diff)
 {
-	if (diff == 0.0) return 0.0;
-	return fabs(1.0 / diff);
+	if (diff == 0.0f) return 0.0f;
+	return fabs(1.0f / diff);
 }
 
-static double FindFirstCrossing(double beg, double diff, double stepSize)
+static float FindFirstCrossing(float beg, float diff, float stepSize)
 {
-	if (stepSize == 0.0) return 9.9; // return anything >= 1.0
-	if (diff > 0.0) {
-		return stepSize * (ceil(beg) - beg);
+	if (stepSize == 0.0f) return 9.9f; // return anything >= 1.0f
+	if (diff > 0.0f) {
+		return stepSize * (ceilf(beg) - beg);
 	} else {
-		return stepSize * (beg - floor(beg));
+		return stepSize * (beg - floorf(beg));
 	}
 }
 
@@ -41,7 +41,7 @@ static void RasterizeDot(
 	dest[cellIdx].edgeValues[px % 8] = edgeValue;
 }
 
-#define QUANTIZE(x) ((long) ((x) * 1024.0 + 0.5))
+#define QUANTIZE(x) ((long) ((x) * 1024.0f + 0.5f))
 
 /*
 RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
@@ -52,21 +52,21 @@ orders them based on the variable scalar in the line equation.
 
 static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
 {
-	double dx = line.end.x - line.beg.x;
-	double dy = line.end.y - line.beg.y;
+	float dx = line.end.x - line.beg.x;
+	float dy = line.end.y - line.beg.y;
 
 	// step size along each axis
-	double sx = CalcStepSize(dx);
-	double sy = CalcStepSize(dy);
+	float sx = CalcStepSize(dx);
+	float sy = CalcStepSize(dy);
 	// t of next vertical / horizontal intersection
-	double xt = FindFirstCrossing(line.beg.x, dx, sx);
-	double yt = FindFirstCrossing(line.beg.y, dy, sy);
+	float xt = FindFirstCrossing(line.beg.x, dx, sx);
+	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
 	long prev_qx = QUANTIZE(line.beg.x);
 	long prev_qy = QUANTIZE(line.beg.y);
 
-	while (xt < 1.0 || yt < 1.0) {
-		double t;
+	while (xt < 1.0f || yt < 1.0f) {
+		float t;
 		if (xt < yt) {
 			t = xt;
 			xt += sx;

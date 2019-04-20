@@ -33,7 +33,7 @@ C standard headers - we can use these even if we don't link with the standard li
 #define gabs(x) ((x) >= 0 ? (x) : -(x))
 
 typedef struct {
-	double x, y;
+	float x, y;
 } Point;
 
 typedef struct {
@@ -55,8 +55,8 @@ static int CompareStrings(char const * a, char const * b, long n)
 
 static Point Midpoint(Point a, Point b)
 {
-	double x = (a.x + b.x) / 2.0; // TODO more bounded computation
-	double y = (a.y + b.y) / 2.0;
+	float x = (a.x + b.x) / 2.0f; // TODO more bounded computation
+	float y = (a.y + b.y) / 2.0f;
 	return (Point) { x, y };
 }
 
