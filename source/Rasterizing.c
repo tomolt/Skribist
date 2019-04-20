@@ -16,13 +16,7 @@ static double FindFirstCrossing(double beg, double diff, double stepSize)
 
 static long skrAbsolute(long value)
 {
-	/*
-	FIXME this abs() workaround depends on long values being 32 bits wide and
-	right shift on signed number being implemented as an arithmetic shift.
-	We should either not rely on these things ore at least check for them.
-	*/
-	uint32_t mask = value >> 31;
-	return (value ^ mask) + (mask & 1);
+	return value >= 0 ? value : -value;
 }
 
 static void RasterizeDot(
