@@ -14,11 +14,6 @@ static double FindFirstCrossing(double beg, double diff, double stepSize)
 	}
 }
 
-static long skrAbsolute(long value)
-{
-	return value >= 0 ? value : -value;
-}
-
 static void RasterizeDot(
 	long qbx, long qby, long qex, long qey,
 	RasterCell * restrict dest, SKR_Dimensions dims)
@@ -37,7 +32,7 @@ static void RasterizeDot(
 	short edgeValue = dest[cellIdx].edgeValues[px % 8];
 
 	long windingAndCover = -(qex - qbx); // winding * cover
-	long area = skrAbsolute(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
+	long area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
 	tailValue += windingAndCover;
 	edgeValue += windingAndCover * area / 1024;

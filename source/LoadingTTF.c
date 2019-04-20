@@ -535,14 +535,14 @@ static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve)
 		}
 	case 2:
 		if (onCurve) {
-			Curve curve = { fsm->queuedStart, fsm->queuedPivot, newNode };
+			Curve curve = { fsm->queuedStart, newNode, fsm->queuedPivot };
 			DrawCurve(curve, fsm->raster, fsm->dims);
 			fsm->queuedStart = newNode;
 			fsm->state = 1;
 			break;
 		} else {
 			Point implicit = Midpoint(fsm->queuedPivot, newNode);
-			Curve curve = { fsm->queuedStart, fsm->queuedPivot, implicit };
+			Curve curve = { fsm->queuedStart, implicit, fsm->queuedPivot };
 			DrawCurve(curve, fsm->raster, fsm->dims);
 			fsm->queuedStart = implicit;
 			fsm->queuedPivot = newNode;

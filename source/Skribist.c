@@ -30,6 +30,8 @@ C standard headers - we can use these even if we don't link with the standard li
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+#define gabs(x) ((x) >= 0 ? (x) : -(x))
+
 typedef struct {
 	double x, y;
 } Point;
@@ -39,7 +41,7 @@ typedef struct {
 } Line;
 
 typedef struct {
-	Point beg, ctrl, end;
+	Point beg, end, ctrl;
 } Curve;
 
 static int CompareStrings(char const * a, char const * b, long n)

@@ -1,9 +1,9 @@
 static double ManhattanDistance(Point a, Point b)
 {
-	return fabs(a.x - b.x) + fabs(a.y - b.y);
+	return gabs(a.x - b.x) + gabs(a.y - b.y);
 }
 
-static int IsFlat(Curve curve, double flatness)
+static int IsFlat(Curve curve, float flatness)
 {
 	Point mid = Midpoint(curve.beg, curve.end);
 	double dist = ManhattanDistance(curve.ctrl, mid);
@@ -15,8 +15,8 @@ static void SplitCurve(Curve curve, Curve segments[2])
 	Point ctrl0 = Midpoint(curve.beg, curve.ctrl);
 	Point ctrl1 = Midpoint(curve.ctrl, curve.end);
 	Point pivot = Midpoint(ctrl0, ctrl1);
-	segments[0] = (Curve) { curve.beg, ctrl0, pivot };
-	segments[1] = (Curve) { pivot, ctrl1, curve.end };
+	segments[0] = (Curve) { curve.beg, pivot, ctrl0 };
+	segments[1] = (Curve) { pivot, curve.end, ctrl1 };
 }
 
 static void DrawCurve(Curve initialCurve, RasterCell * restrict dest, SKR_Dimensions dims)
