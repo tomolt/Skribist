@@ -36,14 +36,8 @@ static void RasterizeDot(
 	short tailValue = dest[cellIdx].tailValues[px % 8];
 	short edgeValue = dest[cellIdx].edgeValues[px % 8];
 
-	// fractional beg & end coordinates
-	long fbx = qbx - px * 1024;
-	long fby = qby - py * 1024;
-	long fex = qex - px * 1024;
-	long fey = qey - py * 1024;
-
-	long windingAndCover = -(fex - fbx); // winding * cover
-	long area = skrAbsolute(fey - fby) / 2 + 1024 - max(fey, fby);
+	long windingAndCover = -(qex - qbx); // winding * cover
+	long area = skrAbsolute(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
 	tailValue += windingAndCover;
 	edgeValue += windingAndCover * area / 1024;
