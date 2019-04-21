@@ -616,7 +616,9 @@ static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
 		ExtendContour(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT, ws);
 	}
 
-	FlushWrites(ws);
+	if (ws->dwbCount > 0) {
+		FlushWrites(ws);
+	}
 }
 
 static DotWrite dwbBacking[256];

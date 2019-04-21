@@ -45,9 +45,9 @@ typedef struct {
 } Curve;
 
 typedef struct {
-	unsigned long idx;
-	short tailValue;
-	short edgeValue;
+	uint32_t idx;
+	int16_t tailValue;
+	int16_t edgeValue;
 } DotWrite;
 
 typedef struct {

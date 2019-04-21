@@ -16,12 +16,12 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 
 static void FlushWrites(Workspace * restrict ws)
 {
-	for (int i = 0; i < ws->dwbCount; ++i) {
-		DotWrite write = ws->dwb[i];
-		ws->raster[write.idx / 8].tailValues[write.idx % 8] += write.tailValue;
-		ws->raster[write.idx / 8].edgeValues[write.idx % 8] += write.edgeValue;
-	}
-	ws->dwbCount = 0;
+	DotWrite * restrict dot = ws->dwb;
+	do {
+		ws->raster[dot->idx / 8].tailValues[dot->idx % 8] += dot->tailValue;
+		ws->raster[dot->idx / 8].edgeValues[dot->idx % 8] += dot->edgeValue;
+		++dot, --ws->dwbCount;
+	} while (ws->dwbCount > 0);
 }
 
 static void RasterizeDot(
@@ -41,11 +41,13 @@ static void RasterizeDot(
 
 	DotWrite write;
 
-	long width = (ws->dims.width + 7) / 8; // in cells
+	uint32_t width = (ws->dims.width + 7) / 8; // in cells
 	write.idx = 8 * width * py + px;
 
-	long windingAndCover = -(qex - qbx); // winding * cover
-	long area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
+	int windingAndCover = -(qex - qbx); // winding * cover
+	if (!windingAndCover) return;
+
+	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
 	write.tailValue = windingAndCover;
 	write.edgeValue = windingAndCover * area / 1024;
