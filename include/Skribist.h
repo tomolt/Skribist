@@ -62,8 +62,8 @@ typedef struct {
 } SKR_Bounds;
 
 typedef struct {
-	short edgeValues[8];
-	short tailValues[8];
+	short edgeValue;
+	short tailValue;
 } RasterCell;
 
 void skrInitializeLibrary(void);

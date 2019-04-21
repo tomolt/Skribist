@@ -31,8 +31,12 @@ static void RasterizeDot(
 	int windingAndCover = -(qex - qbx); // winding * cover
 	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
-	ws->raster[idx / 8].edgeValues[idx % 8] += windingAndCover * area / 1024;
-	ws->raster[idx / 8].tailValues[idx % 8] += windingAndCover;
+	RasterCell cell = ws->raster[idx];
+
+	cell.edgeValue += windingAndCover * area / 1024;
+	cell.tailValue += windingAndCover;
+
+	ws->raster[idx] = cell;
 }
 
 #define QUANTIZE(x) ((uint32_t) ((x) * 1024.0f + 0.5f))
@@ -114,7 +118,7 @@ void skrInitializeLibrary(void)
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims)
 {
-	return (dims.width + 7) / 8 * dims.height;
+	return ((dims.width + 7) & ~7) * dims.height;
 }
 
 void skrCastImage(
@@ -133,22 +137,36 @@ void skrCastImage(
 
 		for (long row = 0; row < dims.height; ++row) {
 
-			long cellIdx = width * row + col;
-			__m128i edgeValues = _mm_loadu_si128(
-				(__m128i const *) source[cellIdx].edgeValues);
-			__m128i tailValues = _mm_loadu_si128(
-				(__m128i const *) source[cellIdx].tailValues);
+			long cellIdx = 8 * (width * row + col);
+
+			__m128i cells1 = _mm_loadu_si128(
+				(__m128i const *) &source[cellIdx]);
+			__m128i cells2 = _mm_loadu_si128(
+				(__m128i const *) &source[cellIdx + 4]);
+
+			__m128i edgeValues1 = _mm_and_si128(cells1, _mm_set1_epi32(0x0000FFFF));
+			__m128i edgeValues2 = _mm_slli_epi32(cells2, 16);
+			__m128i edgeValues = _mm_or_si128(edgeValues1, edgeValues2);
+
+			__m128i tailValues1 = _mm_srli_epi32(cells1, 16);
+			__m128i tailValues2 = _mm_and_si128(cells2, _mm_set1_epi32(0xFFFF0000));
+			__m128i tailValues = _mm_or_si128(tailValues1, tailValues2);
 
 			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
 			__m128i linearValues = _mm_min_epi16(_mm_max_epi16(values,
 				_mm_setzero_si128()), c1024);
+
 			// TODO gamma correction
 			__m128i gammaValues = _mm_srai_epi16(linearValues, 2);
 			gammaValues = _mm_min_epi16(gammaValues, c255);
-			__m128i compactValues = _mm_packus_epi16(gammaValues, _mm_setzero_si128());
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
+			
+			__m128i shuf1 = _mm_shufflelo_epi16(gammaValues, _MM_SHUFFLE(3, 1, 2, 0));
+			__m128i shuf2 = _mm_shufflehi_epi16(shuf1, _MM_SHUFFLE(3, 1, 2, 0));
+			__m128i shuf3 = _mm_shuffle_epi32(shuf2, _MM_SHUFFLE(3, 1, 2, 0));
 
+			__m128i compactValues = _mm_packus_epi16(shuf3, _mm_setzero_si128());
 			int togo = dims.width - col * 8;
 			__attribute__((aligned(8))) char pixels[8];
 			_mm_storel_epi64((__m128i *) pixels, compactValues);
