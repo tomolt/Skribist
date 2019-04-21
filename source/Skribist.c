@@ -47,6 +47,7 @@ typedef struct {
 typedef struct {
 	RasterCell * restrict raster;
 	SKR_Dimensions dims;
+	uint32_t rasterWidth;
 } Workspace;
 
 static int CompareStrings(char const * a, char const * b, long n)

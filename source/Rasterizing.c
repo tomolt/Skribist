@@ -27,8 +27,7 @@ static void RasterizeDot(
 	SKR_assert(px < ws->dims.width);
 	SKR_assert(py < ws->dims.height);
 
-	uint32_t width = (ws->dims.width + 7) & ~7;
-	uint32_t idx = width * py + px;
+	uint32_t idx = ws->rasterWidth * py + px;
 
 	int windingAndCover = -(qex - qbx); // winding * cover
 	int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
@@ -118,9 +117,15 @@ void skrInitializeLibrary(void)
 	}
 }
 
+uint32_t CalcRasterWidth(SKR_Dimensions dims)
+{
+	return (dims.width + 7) & ~7;
+}
+
+// TODO get rid of this function
 unsigned long skrCalcCellCount(SKR_Dimensions dims)
 {
-	return ((dims.width + 7) & ~7) * dims.height;
+	return CalcRasterWidth(dims) * dims.height;
 }
 
 void skrCastImage(
@@ -128,8 +133,8 @@ void skrCastImage(
 	unsigned char * restrict dest,
 	SKR_Dimensions dims)
 {
-	// TODO common function / macro
-	long const width = (dims.width + 7) & ~7;
+	// TODO read from workspace instead
+	long const width = CalcRasterWidth(dims);
 
 	__m128i const lowMask  = _mm_set1_epi32(0x0000FFFF);
 	__m128i const highMask = _mm_set1_epi32(0xFFFF0000);
