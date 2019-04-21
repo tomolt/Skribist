@@ -131,7 +131,6 @@ void skrCastImage(
 	// TODO common function / macro
 	long const width = (dims.width + 7) & ~7;
 
-	__m128i const cGRAIN = _mm_set1_epi16(GRAIN);
 	__m128i const lowMask  = _mm_set1_epi32(0x0000FFFF);
 	__m128i const highMask = _mm_set1_epi32(0xFFFF0000);
 #define SHUFFLE_MASK _MM_SHUFFLE(3, 1, 2, 0)
@@ -159,12 +158,10 @@ void skrCastImage(
 			__m128i tailValues = _mm_or_si128(tailValues1, tailValues2);
 
 			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
-			__m128i linearValues = _mm_min_epi16(_mm_max_epi16(values,
-				_mm_setzero_si128()), cGRAIN);
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 			
-			__m128i shuf1 = _mm_shufflelo_epi16(linearValues, SHUFFLE_MASK);
+			__m128i shuf1 = _mm_shufflelo_epi16(values, SHUFFLE_MASK);
 			__m128i shuf2 = _mm_shufflehi_epi16(shuf1, SHUFFLE_MASK);
 			__m128i shuf3 = _mm_shuffle_epi32(shuf2, SHUFFLE_MASK);
 
