@@ -25,8 +25,8 @@ static void RasterizeDot(
 	SKR_assert(px < ws->dims.width);
 	SKR_assert(py < ws->dims.height);
 
-	uint32_t width = (ws->dims.width + 7) / 8; // in cells
-	uint32_t idx = 8 * width * py + px;
+	uint32_t width = (ws->dims.width + 7) & ~7;
+	uint32_t idx = width * py + px;
 
 	int windingAndCover = -(qex - qbx); // winding * cover
 	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
@@ -126,7 +126,8 @@ void skrCastImage(
 	unsigned char * restrict dest,
 	SKR_Dimensions dims)
 {
-	long const width = (dims.width + 7) / 8; // in cells
+	// TODO common function / macro
+	long const width = (dims.width + 7) & ~7;
 
 	__m128i const c1024 = _mm_set1_epi16(1024);
 	__m128i const c255 = _mm_set1_epi16(255);
@@ -134,18 +135,18 @@ void skrCastImage(
 	__m128i const highMask = _mm_set1_epi32(0xFFFF0000);
 #define SHUFFLE_MASK _MM_SHUFFLE(3, 1, 2, 0)
 
-	for (long col = 0; col < width; ++col) {
+	for (long col = 0; col < width; col += 8) {
+
+		RasterCell const * restrict cell = source + col;
 
 		__m128i accumulators = _mm_setzero_si128();
 
-		for (long row = 0; row < dims.height; ++row) {
-
-			long cellIdx = 8 * (width * row + col);
+		for (long row = 0; row < dims.height; ++row, cell += width) {
 
 			__m128i cells1 = _mm_loadu_si128(
-				(__m128i const *) &source[cellIdx]);
+				(__m128i const *) cell);
 			__m128i cells2 = _mm_loadu_si128(
-				(__m128i const *) &source[cellIdx + 4]);
+				(__m128i const *) (cell + 4));
 
 			__m128i edgeValues1 = _mm_and_si128(cells1, lowMask);
 			__m128i edgeValues2 = _mm_slli_epi32(cells2, 16);
@@ -170,10 +171,10 @@ void skrCastImage(
 			__m128i shuf3 = _mm_shuffle_epi32(shuf2, SHUFFLE_MASK);
 
 			__m128i compactValues = _mm_packus_epi16(shuf3, _mm_setzero_si128());
-			int togo = dims.width - col * 8;
+			int togo = dims.width - col;
 			__attribute__((aligned(8))) char pixels[8];
 			_mm_storel_epi64((__m128i *) pixels, compactValues);
-			memcpy(&dest[dims.width * row + col * 8], pixels, min(togo, 8));
+			memcpy(&dest[dims.width * row + col], pixels, min(togo, 8));
 		}
 		// TODO assertion
 	}
