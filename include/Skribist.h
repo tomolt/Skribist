@@ -47,7 +47,7 @@ typedef struct {
 } SKR_HorMetrics;
 
 typedef struct {
-	long width, height;
+	uint32_t width, height;
 } SKR_Dimensions;
 
 /*

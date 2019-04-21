@@ -33,11 +33,11 @@ static void RasterizeDot(
 	}
 
 	// pixel coordinates
-	int px = min(qbx, qex) / 1024;
-	int py = min(qby, qey) / 1024;
+	uint32_t px = min(qbx, qex) / 1024u;
+	uint32_t py = min(qby, qey) / 1024u;
 
-	SKR_assert(px >= 0 && px < ws->dims.width);
-	SKR_assert(py >= 0 && py < ws->dims.height);
+	SKR_assert(px < ws->dims.width);
+	SKR_assert(py < ws->dims.height);
 
 	DotWrite write;
 

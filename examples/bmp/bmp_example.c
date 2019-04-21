@@ -85,8 +85,8 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 	hdr[26] = 1; // color planes
 	hdr[28] = 24; // bpp
 	fwrite(hdr, 1, 54, outFile);
-	for (int y = 0; y < dim.height; ++y) {
-		for (int x = 0; x < dim.width; ++x) {
+	for (uint32_t y = 0; y < dim.height; ++y) {
+		for (uint32_t x = 0; x < dim.width; ++x) {
 			unsigned char c = image[dim.width * y + x];
 			fputc(c, outFile); // r
 			fputc(c, outFile); // g
