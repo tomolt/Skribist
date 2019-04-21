@@ -1,3 +1,5 @@
+#define GRAIN 256
+
 static float CalcStepSize(float diff)
 {
 	if (diff == 0.0f) return 0.0f;
@@ -19,8 +21,8 @@ static void RasterizeDot(
 	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
 	// pixel coordinates
-	uint32_t px = min(qbx, qex) / 1024u;
-	uint32_t py = min(qby, qey) / 1024u;
+	uint32_t px = min(qbx, qex) / GRAIN;
+	uint32_t py = min(qby, qey) / GRAIN;
 
 	SKR_assert(px < ws->dims.width);
 	SKR_assert(py < ws->dims.height);
@@ -29,17 +31,17 @@ static void RasterizeDot(
 	uint32_t idx = width * py + px;
 
 	int windingAndCover = -(qex - qbx); // winding * cover
-	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
+	int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
 
 	RasterCell cell = ws->raster[idx];
 
-	cell.edgeValue += windingAndCover * area / 1024;
+	cell.edgeValue += windingAndCover * area / GRAIN;
 	cell.tailValue += windingAndCover;
 
 	ws->raster[idx] = cell;
 }
 
-#define QUANTIZE(x) ((uint32_t) ((x) * 1024.0f + 0.5f))
+#define QUANTIZE(x) ((uint32_t) ((x) * (float) GRAIN + 0.5f))
 
 /*
 RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
@@ -90,7 +92,7 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 
 static void DrawLine(Workspace * restrict ws, Line line)
 {
-	if (gabs(line.end.x - line.beg.x) >= 1.0f / 1024.0f) {
+	if (gabs(line.end.x - line.beg.x) >= 1.0f / GRAIN) {
 		RasterizeLine(ws, line);
 	}
 }
@@ -107,12 +109,12 @@ static double CalcLinearToGamma(double L)
 	return S;
 }
 
-static unsigned char LinearToGamma[1025];
+static unsigned char LinearToGamma[GRAIN + 1];
 
 void skrInitializeLibrary(void)
 {
-	for (int i = 0; i <= 1024; ++i) {
-		LinearToGamma[i] = round(CalcLinearToGamma(i / 1024.0) * 255.0);
+	for (int i = 0; i <= GRAIN; ++i) {
+		LinearToGamma[i] = round(CalcLinearToGamma(i / (float) GRAIN) * 255.0);
 	}
 }
 
@@ -129,8 +131,7 @@ void skrCastImage(
 	// TODO common function / macro
 	long const width = (dims.width + 7) & ~7;
 
-	__m128i const c1024 = _mm_set1_epi16(1024);
-	__m128i const c255 = _mm_set1_epi16(255);
+	__m128i const cGRAIN = _mm_set1_epi16(GRAIN);
 	__m128i const lowMask  = _mm_set1_epi32(0x0000FFFF);
 	__m128i const highMask = _mm_set1_epi32(0xFFFF0000);
 #define SHUFFLE_MASK _MM_SHUFFLE(3, 1, 2, 0)
@@ -159,15 +160,11 @@ void skrCastImage(
 
 			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
 			__m128i linearValues = _mm_min_epi16(_mm_max_epi16(values,
-				_mm_setzero_si128()), c1024);
-
-			// TODO gamma correction
-			__m128i gammaValues = _mm_srai_epi16(linearValues, 2);
-			gammaValues = _mm_min_epi16(gammaValues, c255);
+				_mm_setzero_si128()), cGRAIN);
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 			
-			__m128i shuf1 = _mm_shufflelo_epi16(gammaValues, SHUFFLE_MASK);
+			__m128i shuf1 = _mm_shufflelo_epi16(linearValues, SHUFFLE_MASK);
 			__m128i shuf2 = _mm_shufflehi_epi16(shuf1, SHUFFLE_MASK);
 			__m128i shuf3 = _mm_shuffle_epi32(shuf2, SHUFFLE_MASK);
 
