@@ -138,10 +138,11 @@ void skrCastImage(
 	for (long col = 0; col < width; col += 8) {
 
 		RasterCell const * restrict cell = source + col;
+		unsigned char * restrict pixel = dest + col;
 
 		__m128i accumulators = _mm_setzero_si128();
 
-		for (long row = 0; row < dims.height; ++row, cell += width) {
+		for (long i = dims.height; i > 0; --i, cell += width, pixel += dims.width) {
 
 			__m128i cells1 = _mm_loadu_si128(
 				(__m128i const *) cell);
@@ -174,7 +175,7 @@ void skrCastImage(
 			int togo = dims.width - col;
 			__attribute__((aligned(8))) char pixels[8];
 			_mm_storel_epi64((__m128i *) pixels, compactValues);
-			memcpy(&dest[dims.width * row + col], pixels, min(togo, 8));
+			memcpy(pixel, pixels, min(togo, 8));
 		}
 		// TODO assertion
 	}
