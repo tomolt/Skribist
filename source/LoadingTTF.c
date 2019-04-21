@@ -513,7 +513,7 @@ complicated. ExtendContour() implements this using a simple finite state machine
 
 */
 
-static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve)
+static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve, Workspace * restrict ws)
 {
 	switch (fsm->state) {
 	case 0:
@@ -525,7 +525,7 @@ static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve)
 	case 1:
 		if (onCurve) {
 			Line line = { fsm->queuedStart, newNode };
-			DrawLine(line, fsm->raster, fsm->dims);
+			DrawLine(ws, line);
 			fsm->queuedStart = newNode;
 			break;
 		} else {
@@ -536,14 +536,14 @@ static void ExtendContour(ContourFSM * restrict fsm, Point newNode, int onCurve)
 	case 2:
 		if (onCurve) {
 			Curve curve = { fsm->queuedStart, newNode, fsm->queuedPivot };
-			DrawCurve(curve, fsm->raster, fsm->dims);
+			DrawCurve(ws, curve);
 			fsm->queuedStart = newNode;
 			fsm->state = 1;
 			break;
 		} else {
 			Point implicit = Midpoint(fsm->queuedPivot, newNode);
 			Curve curve = { fsm->queuedStart, implicit, fsm->queuedPivot };
-			DrawCurve(curve, fsm->raster, fsm->dims);
+			DrawCurve(ws, curve);
 			fsm->queuedStart = implicit;
 			fsm->queuedPivot = newNode;
 			break;
@@ -580,14 +580,12 @@ static long GetCoordinateAndAdvance(BYTES1 flags, BYTES1 * restrict * restrict p
 }
 
 static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
-	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
+	SKR_Transform transform, Workspace * restrict ws)
 {
 	int pointIdx = 0;
 	long prevX = 0, prevY = 0;
 
 	ContourFSM fsm = { 0 };
-	fsm.raster = raster;
-	fsm.dims = dims;
 
 	for (int c = 0; c < intel->numContours; ++c) {
 		int endPt = ru16(intel->endPts[c]);
@@ -607,7 +605,7 @@ static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
 				Point point = {
 					x * transform.xScale + transform.xMove,
 					y * transform.yScale + transform.yMove };
-				ExtendContour(&fsm, point, flags & SGF_ON_CURVE_POINT);
+				ExtendContour(&fsm, point, flags & SGF_ON_CURVE_POINT, ws);
 				prevX = x, prevY = y;
 				++pointIdx;
 				--times;
@@ -615,9 +613,13 @@ static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
 		}
 
 		// Close the loop - but don't update relative origin point
-		ExtendContour(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT);
+		ExtendContour(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT, ws);
 	}
+
+	FlushWrites(ws);
 }
+
+static DotWrite dwbBacking[256];
 
 SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
@@ -631,6 +633,7 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	if (s) return s;
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
-	DrawOutlineWithIntel(&intel, transform, raster, dims);
+	Workspace ws = { raster, dims, 0, dwbBacking };
+	DrawOutlineWithIntel(&intel, transform, &ws);
 	return SKR_SUCCESS;
 }

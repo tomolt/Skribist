@@ -14,31 +14,43 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 	}
 }
 
-static void RasterizeDot(
-	long qbx, long qby, long qex, long qey,
-	RasterCell * restrict dest, SKR_Dimensions dims)
+static void FlushWrites(Workspace * restrict ws)
 {
+	for (int i = 0; i < ws->dwbCount; ++i) {
+		DotWrite write = ws->dwb[i];
+		ws->raster[write.idx / 8].tailValues[write.idx % 8] += write.tailValue;
+		ws->raster[write.idx / 8].edgeValues[write.idx % 8] += write.edgeValue;
+	}
+	ws->dwbCount = 0;
+}
+
+static void RasterizeDot(
+	Workspace * restrict ws,
+	long qbx, long qby, long qex, long qey)
+{
+	if (ws->dwbCount == 256) {
+		FlushWrites(ws);
+	}
+
 	// pixel coordinates
 	long px = min(qbx, qex) / 1024;
 	long py = min(qby, qey) / 1024;
 
-	SKR_assert(px >= 0 && px < dims.width);
-	SKR_assert(py >= 0 && py < dims.height);
+	SKR_assert(px >= 0 && px < ws->dims.width);
+	SKR_assert(py >= 0 && py < ws->dims.height);
 
-	long width = (dims.width + 7) / 8; // in cells
-	long cellIdx = width * py + (px / 8);
+	DotWrite write;
 
-	short tailValue = dest[cellIdx].tailValues[px % 8];
-	short edgeValue = dest[cellIdx].edgeValues[px % 8];
+	long width = (ws->dims.width + 7) / 8; // in cells
+	write.idx = 8 * width * py + px;
 
 	long windingAndCover = -(qex - qbx); // winding * cover
 	long area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
-	tailValue += windingAndCover;
-	edgeValue += windingAndCover * area / 1024;
+	write.tailValue = windingAndCover;
+	write.edgeValue = windingAndCover * area / 1024;
 
-	dest[cellIdx].tailValues[px % 8] = tailValue;
-	dest[cellIdx].edgeValues[px % 8] = edgeValue;
+	ws->dwb[ws->dwbCount++] = write;
 }
 
 #define QUANTIZE(x) ((long) ((x) * 1024.0f + 0.5f))
@@ -50,7 +62,7 @@ which the line crosses a horizontal or vertical pixel edge respectively, and
 orders them based on the variable scalar in the line equation.
 */
 
-static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
+static void RasterizeLine(Workspace * restrict ws, Line line)
 {
 	float dx = line.end.x - line.beg.x;
 	float dy = line.end.y - line.beg.y;
@@ -78,7 +90,7 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 		long qx = QUANTIZE(line.beg.x + t * dx);
 		long qy = QUANTIZE(line.beg.y + t * dy);
 
-		RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
+		RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 
 		prev_qx = qx;
 		prev_qy = qy;
@@ -87,12 +99,12 @@ static void RasterizeLine(Line line, RasterCell * restrict dest, SKR_Dimensions 
 	long qx = QUANTIZE(line.end.x);
 	long qy = QUANTIZE(line.end.y);
 
-	RasterizeDot(prev_qx, prev_qy, qx, qy, dest, dims);
+	RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 }
 
-static void DrawLine(Line line, RasterCell * restrict dest, SKR_Dimensions dims)
+static void DrawLine(Workspace * restrict ws, Line line)
 {
-	RasterizeLine(line, dest, dims);
+	RasterizeLine(ws, line);
 }
 
 // TODO take monitor gamma i guess?
@@ -161,3 +173,13 @@ void skrCastImage(
 		// TODO assertion
 	}
 }
+
+#if 0
+void skrConvertImage(unsigned char const * restrict source, unsigned char * restrict dest, SKR_Dimensions dims, SKR_Format destFormat))
+{
+	for (long i = 0; i < dims.width * dims.height; ++i) {
+		
+	}
+}
+#endif
+

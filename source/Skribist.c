@@ -44,6 +44,19 @@ typedef struct {
 	Point beg, end, ctrl;
 } Curve;
 
+typedef struct {
+	unsigned long idx;
+	short tailValue;
+	short edgeValue;
+} DotWrite;
+
+typedef struct {
+	RasterCell * restrict raster;
+	SKR_Dimensions dims;
+	int dwbCount;
+	DotWrite * restrict dwb; // dot write buffer
+} Workspace;
+
 static int CompareStrings(char const * a, char const * b, long n)
 {
 	for (long i = 0; i < n; ++i) {

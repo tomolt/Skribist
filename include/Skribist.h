@@ -67,17 +67,17 @@ typedef struct {
 } RasterCell;
 
 void skrInitializeLibrary(void);
-SKR_Status skrInitializeFont(SKR_Font * font);
+SKR_Status skrInitializeFont(SKR_Font * restrict font);
 
-Glyph skrGlyphFromCode(SKR_Font const * font, int charCode);
+Glyph skrGlyphFromCode(SKR_Font const * restrict font, int charCode);
 
-SKR_Status skrGetHorMetrics(SKR_Font const * font,
-	Glyph glyph, SKR_HorMetrics * metrics);
+SKR_Status skrGetHorMetrics(SKR_Font const * restrict font,
+	Glyph glyph, SKR_HorMetrics * restrict metrics);
 
-SKR_Status skrGetOutlineBounds(SKR_Font const * font, Glyph glyph,
-	SKR_Transform transform, SKR_Bounds * bounds);
-SKR_Status skrDrawOutline(SKR_Font const * font, Glyph glyph,
-	SKR_Transform transform, RasterCell * raster, SKR_Dimensions dims);
+SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
+	SKR_Transform transform, SKR_Bounds * restrict bounds);
+SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
+	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims);
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims);
 void skrCastImage(

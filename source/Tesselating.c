@@ -19,7 +19,7 @@ static void SplitCurve(Curve curve, Curve segments[2])
 	segments[1] = (Curve) { pivot, curve.end, ctrl1 };
 }
 
-static void DrawCurve(Curve initialCurve, RasterCell * restrict dest, SKR_Dimensions dims)
+static void DrawCurve(Workspace * restrict ws, Curve initialCurve)
 {
 	/*
 	Ínstead of recursion we use an explicit stack here.
@@ -32,7 +32,7 @@ static void DrawCurve(Curve initialCurve, RasterCell * restrict dest, SKR_Dimens
 	while (top > 0) {
 		Curve curve = stack[--top];
 		if (IsFlat(curve, 0.5f)) {
-			DrawLine(*(Line *) &curve, dest, dims);
+			DrawLine(ws, *(Line *) &curve);
 		} else {
 			SKR_assert(top + 2 <= 1000);
 			SplitCurve(curve, &stack[top]);
