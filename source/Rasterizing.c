@@ -39,14 +39,12 @@ static void RasterizeDot(
 	SKR_assert(px >= 0 && px < ws->dims.width);
 	SKR_assert(py >= 0 && py < ws->dims.height);
 
-	int windingAndCover = -(qex - qbx); // winding * cover
-	if (!windingAndCover) return;
-
 	DotWrite write;
 
 	uint32_t width = (ws->dims.width + 7) / 8; // in cells
 	write.idx = 8 * width * py + px;
 
+	int windingAndCover = -(qex - qbx); // winding * cover
 	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
 	write.tailValue = windingAndCover;
@@ -106,7 +104,9 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 
 static void DrawLine(Workspace * restrict ws, Line line)
 {
-	RasterizeLine(ws, line);
+	if (gabs(line.end.x - line.beg.x) >= 1.0f / 1024.0f) {
+		RasterizeLine(ws, line);
+	}
 }
 
 // TODO take monitor gamma i guess?
