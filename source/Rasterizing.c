@@ -26,26 +26,26 @@ static void FlushWrites(Workspace * restrict ws)
 
 static void RasterizeDot(
 	Workspace * restrict ws,
-	long qbx, long qby, long qex, long qey)
+	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
 	if (ws->dwbCount == 256) {
 		FlushWrites(ws);
 	}
 
 	// pixel coordinates
-	long px = min(qbx, qex) / 1024;
-	long py = min(qby, qey) / 1024;
+	int px = min(qbx, qex) / 1024;
+	int py = min(qby, qey) / 1024;
 
 	SKR_assert(px >= 0 && px < ws->dims.width);
 	SKR_assert(py >= 0 && py < ws->dims.height);
+
+	int windingAndCover = -(qex - qbx); // winding * cover
+	if (!windingAndCover) return;
 
 	DotWrite write;
 
 	uint32_t width = (ws->dims.width + 7) / 8; // in cells
 	write.idx = 8 * width * py + px;
-
-	int windingAndCover = -(qex - qbx); // winding * cover
-	if (!windingAndCover) return;
 
 	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
@@ -55,7 +55,7 @@ static void RasterizeDot(
 	ws->dwb[ws->dwbCount++] = write;
 }
 
-#define QUANTIZE(x) ((long) ((x) * 1024.0f + 0.5f))
+#define QUANTIZE(x) ((uint32_t) ((x) * 1024.0f + 0.5f))
 
 /*
 RasterizeLine() is intended to take in a single line and pass it on as a sequence of dots.
@@ -76,8 +76,8 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	float xt = FindFirstCrossing(line.beg.x, dx, sx);
 	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
-	long prev_qx = QUANTIZE(line.beg.x);
-	long prev_qy = QUANTIZE(line.beg.y);
+	uint32_t prev_qx = QUANTIZE(line.beg.x);
+	uint32_t prev_qy = QUANTIZE(line.beg.y);
 
 	while (xt < 1.0f || yt < 1.0f) {
 		float t;
@@ -89,8 +89,8 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 			yt += sy;
 		}
 
-		long qx = QUANTIZE(line.beg.x + t * dx);
-		long qy = QUANTIZE(line.beg.y + t * dy);
+		uint32_t qx = QUANTIZE(line.beg.x + t * dx);
+		uint32_t qy = QUANTIZE(line.beg.y + t * dy);
 
 		RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 
@@ -98,8 +98,8 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 		prev_qy = qy;
 	}
 
-	long qx = QUANTIZE(line.end.x);
-	long qy = QUANTIZE(line.end.y);
+	uint32_t qx = QUANTIZE(line.end.x);
+	uint32_t qy = QUANTIZE(line.end.y);
 
 	RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 }
