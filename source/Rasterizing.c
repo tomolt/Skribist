@@ -126,10 +126,13 @@ void skrCastImage(
 	unsigned char * restrict dest,
 	SKR_Dimensions dims)
 {
-	long width = (dims.width + 7) / 8; // in cells
+	long const width = (dims.width + 7) / 8; // in cells
 
-	__m128i c1024 = _mm_set1_epi16(1024);
-	__m128i c255 = _mm_set1_epi16(255);
+	__m128i const c1024 = _mm_set1_epi16(1024);
+	__m128i const c255 = _mm_set1_epi16(255);
+	__m128i const lowMask  = _mm_set1_epi32(0x0000FFFF);
+	__m128i const highMask = _mm_set1_epi32(0xFFFF0000);
+#define SHUFFLE_MASK _MM_SHUFFLE(3, 1, 2, 0)
 
 	for (long col = 0; col < width; ++col) {
 
@@ -144,12 +147,12 @@ void skrCastImage(
 			__m128i cells2 = _mm_loadu_si128(
 				(__m128i const *) &source[cellIdx + 4]);
 
-			__m128i edgeValues1 = _mm_and_si128(cells1, _mm_set1_epi32(0x0000FFFF));
+			__m128i edgeValues1 = _mm_and_si128(cells1, lowMask);
 			__m128i edgeValues2 = _mm_slli_epi32(cells2, 16);
 			__m128i edgeValues = _mm_or_si128(edgeValues1, edgeValues2);
 
 			__m128i tailValues1 = _mm_srli_epi32(cells1, 16);
-			__m128i tailValues2 = _mm_and_si128(cells2, _mm_set1_epi32(0xFFFF0000));
+			__m128i tailValues2 = _mm_and_si128(cells2, highMask);
 			__m128i tailValues = _mm_or_si128(tailValues1, tailValues2);
 
 			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
@@ -162,9 +165,9 @@ void skrCastImage(
 
 			accumulators = _mm_adds_epi16(accumulators, tailValues);
 			
-			__m128i shuf1 = _mm_shufflelo_epi16(gammaValues, _MM_SHUFFLE(3, 1, 2, 0));
-			__m128i shuf2 = _mm_shufflehi_epi16(shuf1, _MM_SHUFFLE(3, 1, 2, 0));
-			__m128i shuf3 = _mm_shuffle_epi32(shuf2, _MM_SHUFFLE(3, 1, 2, 0));
+			__m128i shuf1 = _mm_shufflelo_epi16(gammaValues, SHUFFLE_MASK);
+			__m128i shuf2 = _mm_shufflehi_epi16(shuf1, SHUFFLE_MASK);
+			__m128i shuf3 = _mm_shuffle_epi32(shuf2, SHUFFLE_MASK);
 
 			__m128i compactValues = _mm_packus_epi16(shuf3, _mm_setzero_si128());
 			int togo = dims.width - col * 8;
@@ -174,6 +177,7 @@ void skrCastImage(
 		}
 		// TODO assertion
 	}
+#undef SHUFFLE_MASK
 }
 
 #if 0
