@@ -615,13 +615,7 @@ static void DrawOutlineWithIntel(OutlineIntel * restrict intel,
 		// Close the loop - but don't update relative origin point
 		ExtendContour(&fsm, fsm.looseEnd, SGF_ON_CURVE_POINT, ws);
 	}
-
-	if (ws->dwbCount > 0) {
-		FlushWrites(ws);
-	}
 }
-
-static DotWrite dwbBacking[256];
 
 SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
@@ -635,7 +629,7 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	if (s) return s;
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
-	Workspace ws = { raster, dims, 0, dwbBacking };
+	Workspace ws = { raster, dims };
 	DrawOutlineWithIntel(&intel, transform, &ws);
 	return SKR_SUCCESS;
 }

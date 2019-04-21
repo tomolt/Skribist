@@ -14,24 +14,10 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 	}
 }
 
-static void FlushWrites(Workspace * restrict ws)
-{
-	DotWrite * restrict dot = ws->dwb;
-	do {
-		ws->raster[dot->idx / 8].tailValues[dot->idx % 8] += dot->tailValue;
-		ws->raster[dot->idx / 8].edgeValues[dot->idx % 8] += dot->edgeValue;
-		++dot, --ws->dwbCount;
-	} while (ws->dwbCount > 0);
-}
-
 static void RasterizeDot(
 	Workspace * restrict ws,
 	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
-	if (ws->dwbCount == 256) {
-		FlushWrites(ws);
-	}
-
 	// pixel coordinates
 	uint32_t px = min(qbx, qex) / 1024u;
 	uint32_t py = min(qby, qey) / 1024u;
@@ -39,18 +25,14 @@ static void RasterizeDot(
 	SKR_assert(px < ws->dims.width);
 	SKR_assert(py < ws->dims.height);
 
-	DotWrite write;
-
 	uint32_t width = (ws->dims.width + 7) / 8; // in cells
-	write.idx = 8 * width * py + px;
+	uint32_t idx = 8 * width * py + px;
 
 	int windingAndCover = -(qex - qbx); // winding * cover
 	int area = gabs(qey - qby) / 2 + 1024 - (max(qey, qby) - py * 1024);
 
-	write.tailValue = windingAndCover;
-	write.edgeValue = windingAndCover * area / 1024;
-
-	ws->dwb[ws->dwbCount++] = write;
+	ws->raster[idx / 8].edgeValues[idx % 8] += windingAndCover * area / 1024;
+	ws->raster[idx / 8].tailValues[idx % 8] += windingAndCover;
 }
 
 #define QUANTIZE(x) ((uint32_t) ((x) * 1024.0f + 0.5f))
