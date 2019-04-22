@@ -1,43 +1,34 @@
-#define GRAIN 256
+#define GRAIN_BITS 8
+#define GRAIN (1 << GRAIN_BITS)
 
-static float CalcStepSize(float diff)
+static uint32_t Quantize(float value)
 {
-	if (diff == 0.0f) return 0.0f;
-	return fabs(1.0f / diff);
+	return (uint32_t) (value * GRAIN + 0.5f);
 }
-
-static float FindFirstCrossing(float beg, float diff, float stepSize)
-{
-	if (diff == 0.0f) return 9.9f; // return anything >= 1.0f
-	if (diff < 0.0f) beg = -beg;
-	return stepSize * (ceilf(beg) - beg);
-}
-
-#define QUANTIZE(x) ((uint32_t) ((x) * (float) GRAIN + 0.5f))
 
 static void RasterizeDots(
 	Workspace * restrict ws, int count,
-	float startX, float startY, float ex[4], float ey[4])
+	float startX, float startY, float endX[4], float endY[4])
 {
-	float bx[4], by[4];
-	bx[0] = startX;
-	by[0] = startY;
+	float begX[4], begY[4];
+	begX[0] = startX;
+	begY[0] = startY;
 	for (int i = 1; i < 4; ++i) {
-		bx[i] = ex[i - 1];
-		by[i] = ey[i - 1];
+		begX[i] = endX[i - 1];
+		begY[i] = endY[i - 1];
 	}
 
 	uint32_t cellIdx[4];
 	int16_t edgeValue[4], tailValue[4];
 
 	for (int i = 0; i < 4; ++i) {
-		uint32_t qbx = QUANTIZE(bx[i]);
-		uint32_t qby = QUANTIZE(by[i]);
-		uint32_t qex = QUANTIZE(ex[i]);
-		uint32_t qey = QUANTIZE(ey[i]);
+		uint32_t qbx = Quantize(begX[i]);
+		uint32_t qby = Quantize(begY[i]);
+		uint32_t qex = Quantize(endX[i]);
+		uint32_t qey = Quantize(endY[i]);
 
-		uint32_t px = min(qbx, qex) / GRAIN;
-		uint32_t py = min(qby, qey) / GRAIN;
+		uint32_t px = min(qbx, qex) >> GRAIN_BITS;
+		uint32_t py = min(qby, qey) >> GRAIN_BITS;
 
 		SKR_assert(px < ws->dims.width);
 		SKR_assert(py < ws->dims.height);
@@ -46,7 +37,7 @@ static void RasterizeDots(
 		uint32_t area = GRAIN;
 		area += gabs(qey - qby) >> 1;
 		area -= max(qey, qby);
-		area += py * GRAIN;
+		area += py << GRAIN_BITS;
 
 		cellIdx[i] = ws->rasterWidth * py + px;
 		edgeValue[i] = windingAndCover * area / GRAIN;
@@ -63,6 +54,19 @@ static void RasterizeDots(
 
 		ws->raster[idx] = cell;
 	}
+}
+
+static float CalcStepSize(float diff)
+{
+	if (diff == 0.0f) return 0.0f;
+	return fabs(1.0f / diff);
+}
+
+static float FindFirstCrossing(float beg, float diff, float stepSize)
+{
+	if (diff == 0.0f) return 9.9f; // return anything >= 1.0f
+	if (diff < 0.0f) beg = -beg;
+	return stepSize * (ceilf(beg) - beg);
 }
 
 /*
@@ -85,7 +89,7 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
 	int count = 0;
-	float startX, startY, ex[4], ey[4];
+	float startX, startY, endX[4], endY[4];
 	startX = line.beg.x;
 	startY = line.beg.y;
 
@@ -102,25 +106,25 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 		float curX = line.beg.x + t * dx;
 		float curY = line.beg.y + t * dy;
 
-		ex[count] = curX;
-		ey[count] = curY;
+		endX[count] = curX;
+		endY[count] = curY;
 
 		++count;
 
 		if (count > 3) {
-			RasterizeDots(ws, count, startX, startY, ex, ey);
+			RasterizeDots(ws, count, startX, startY, endX, endY);
 			startX = curX;
 			startY = curY;
 			count = 0;
 		}
 	}
 
-	ex[count] = line.end.x;
-	ey[count] = line.end.y;
+	endX[count] = line.end.x;
+	endY[count] = line.end.y;
 
 	++count;
 
-	RasterizeDots(ws, count, startX, startY, ex, ey);
+	RasterizeDots(ws, count, startX, startY, endX, endY);
 }
 
 static void DrawLine(Workspace * restrict ws, Line line)
