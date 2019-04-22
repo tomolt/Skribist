@@ -15,32 +15,34 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 
 #define QUANTIZE(x) ((uint32_t) ((x) * (float) GRAIN + 0.5f))
 
-static void RasterizeDot(
-	Workspace * restrict ws,
-	float bx, float by, float ex, float ey)
+static void RasterizeDots(
+	Workspace * restrict ws, int count,
+	float bx[4], float by[4], float ex[4], float ey[4])
 {
-	uint32_t qbx = QUANTIZE(bx);
-	uint32_t qby = QUANTIZE(by);
-	uint32_t qex = QUANTIZE(ex);
-	uint32_t qey = QUANTIZE(ey);
+	for (int i = 0; i < count; ++i) {
+		uint32_t qbx = QUANTIZE(bx[i]);
+		uint32_t qby = QUANTIZE(by[i]);
+		uint32_t qex = QUANTIZE(ex[i]);
+		uint32_t qey = QUANTIZE(ey[i]);
 
-	uint32_t px = min(qbx, qex) / GRAIN;
-	uint32_t py = min(qby, qey) / GRAIN;
+		uint32_t px = min(qbx, qex) / GRAIN;
+		uint32_t py = min(qby, qey) / GRAIN;
 
-	SKR_assert(px < ws->dims.width);
-	SKR_assert(py < ws->dims.height);
+		SKR_assert(px < ws->dims.width);
+		SKR_assert(py < ws->dims.height);
 
-	uint32_t idx = ws->rasterWidth * py + px;
+		uint32_t idx = ws->rasterWidth * py + px;
 
-	int windingAndCover = qbx - qex;
-	int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
+		int windingAndCover = qbx - qex;
+		int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
 
-	RasterCell cell = ws->raster[idx];
+		RasterCell cell = ws->raster[idx];
 
-	cell.edgeValue += windingAndCover * area / GRAIN;
-	cell.tailValue += windingAndCover;
+		cell.edgeValue += windingAndCover * area / GRAIN;
+		cell.tailValue += windingAndCover;
 
-	ws->raster[idx] = cell;
+		ws->raster[idx] = cell;
+	}
 }
 
 /*
@@ -62,8 +64,10 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	float xt = FindFirstCrossing(line.beg.x, dx, sx);
 	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
-	float prevX = line.beg.x;
-	float prevY = line.beg.y;
+	int count = 0;
+	float bx[4], by[4], ex[4], ey[4];
+	bx[0] = line.beg.x;
+	by[0] = line.beg.y;
 
 	while (xt < 1.0f || yt < 1.0f) {
 		float t;
@@ -78,16 +82,26 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 		float curX = line.beg.x + t * dx;
 		float curY = line.beg.y + t * dy;
 
-		RasterizeDot(ws, prevX, prevY, curX, curY);
+		ex[count] = curX;
+		ey[count] = curY;
 
-		prevX = curX;
-		prevY = curY;
+		++count;
+
+		if (count > 3) {
+			RasterizeDots(ws, count, bx, by, ex, ey);
+			count = 0;
+		}
+
+		bx[count] = curX;
+		by[count] = curY;
 	}
 
-	float curX = line.end.x;
-	float curY = line.end.y;
+	ex[count] = line.end.x;
+	ey[count] = line.end.y;
 
-	RasterizeDot(ws, prevX, prevY, curX, curY);
+	++count;
+
+	RasterizeDots(ws, count, bx, by, ex, ey);
 }
 
 static void DrawLine(Workspace * restrict ws, Line line)
