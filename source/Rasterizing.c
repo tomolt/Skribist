@@ -8,12 +8,9 @@ static float CalcStepSize(float diff)
 
 static float FindFirstCrossing(float beg, float diff, float stepSize)
 {
-	if (stepSize == 0.0f) return 9.9f; // return anything >= 1.0f
-	if (diff > 0.0f) {
-		return stepSize * (ceilf(beg) - beg);
-	} else {
-		return stepSize * (beg - floorf(beg));
-	}
+	if (diff == 0.0f) return 9.9f; // return anything >= 1.0f
+	if (diff < 0.0f) beg = -beg;
+	return stepSize * (ceilf(beg) - beg);
 }
 
 static void RasterizeDot(
