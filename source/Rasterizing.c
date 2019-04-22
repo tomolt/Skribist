@@ -9,6 +9,24 @@ static __m128i skr_min_epi32(__m128i a, __m128i b)
 	return _mm_or_si128(maskedA, maskedB);
 }
 
+static __m128i skr_max_epi32(__m128i a, __m128i b)
+{
+	__m128i mask = _mm_cmpgt_epi32(a, b);
+	__m128i maskedA = _mm_and_si128(mask, a);
+	__m128i maskedB = _mm_andnot_si128(mask, b);
+	return _mm_or_si128(maskedA, maskedB);
+}
+
+static __m128i skr_abs_epi32(__m128i value)
+{
+	__m128i const c0 = _mm_setzero_si128();
+	__m128i mask = _mm_cmpgt_epi32(value, c0);
+	__m128i neg = _mm_sub_epi32(c0, value);
+	__m128i maskedVal = _mm_and_si128(mask, value);
+	__m128i maskedNeg = _mm_andnot_si128(mask, neg);
+	return _mm_or_si128(maskedVal, maskedNeg);
+}
+
 static __m128i Quantize(__m128 value)
 {
 	__m128 const cGRAIN = _mm_set1_ps(GRAIN);
@@ -45,28 +63,32 @@ static void RasterizeDots(
 
 	// TODO assert for px / py bounds
 	
-	uint32_t qbxS[4], qbyS[4];
-	_mm_storeu_si128((__m128i *) qbxS, qbx);
+	__m128i windingAndCover = _mm_sub_epi32(qbx, qex);
+
+	__m128i const cGRAIN = _mm_set1_epi32(GRAIN);
+	__m128i area1 = _mm_add_epi32(cGRAIN, _mm_slli_epi32(py, GRAIN_BITS));
+	__m128i area2 = _mm_srli_epi32(skr_abs_epi32(_mm_sub_epi32(qey, qby)), 1);
+	__m128i area3 = skr_max_epi32(qey, qby);
+	__m128i area = _mm_sub_epi32(_mm_add_epi32(area1, area2), area3);
+	
+	uint32_t qbyS[4];
 	_mm_storeu_si128((__m128i *) qbyS, qby);
-	uint32_t qexS[4], qeyS[4];
-	_mm_storeu_si128((__m128i *) qexS, qex);
+	uint32_t qeyS[4];
 	_mm_storeu_si128((__m128i *) qeyS, qey);
 	uint32_t pxS[4], pyS[4];
 	_mm_storeu_si128((__m128i *) pxS, px);
 	_mm_storeu_si128((__m128i *) pyS, py);
+	int32_t windingAndCoverS[4];
+	_mm_storeu_si128((__m128i *) windingAndCoverS, windingAndCover);
+	uint32_t areaS[4];
+	_mm_storeu_si128((__m128i *) areaS, area);
 
 	uint32_t cellIdx[4];
 	int16_t edgeValue[4], tailValue[4];
 	for (int i = 0; i < 4; ++i) {
-		int32_t windingAndCover = qbxS[i] - qexS[i];
-		uint32_t area = GRAIN;
-		area += gabs(qeyS[i] - qbyS[i]) >> 1;
-		area -= max(qeyS[i], qbyS[i]);
-		area += pyS[i] << GRAIN_BITS;
-
 		cellIdx[i] = ws->rasterWidth * pyS[i] + pxS[i];
-		edgeValue[i] = windingAndCover * area / GRAIN;
-		tailValue[i] = windingAndCover;
+		edgeValue[i] = windingAndCoverS[i] * areaS[i] / GRAIN;
+		tailValue[i] = windingAndCoverS[i];
 	}
 
 	for (int i = 0; i < count; ++i) {
