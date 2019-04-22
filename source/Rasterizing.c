@@ -27,6 +27,18 @@ static __m128i skr_abs_epi32(__m128i value)
 	return _mm_or_si128(maskedVal, maskedNeg);
 }
 
+static __m128i skr_mullo_epi32(__m128i a, __m128i b)
+{
+	__attribute__ ((aligned (16))) int32_t aS[4], bS[4];
+	_mm_store_si128((__m128i *) aS, a);
+	_mm_store_si128((__m128i *) bS, b);
+	aS[0] *= bS[0];
+	aS[1] *= bS[1];
+	aS[2] *= bS[2];
+	aS[3] *= bS[3];
+	return _mm_load_si128((__m128i *) aS);
+}
+
 static __m128i Quantize(__m128 value)
 {
 	__m128 const cGRAIN = _mm_set1_ps(GRAIN);
@@ -63,6 +75,9 @@ static void RasterizeDots(
 
 	// TODO assert for px / py bounds
 	
+	__m128i rasterWidth = _mm_set1_epi32(ws->rasterWidth);
+	__m128i cellIdx = _mm_add_epi32(px, skr_mullo_epi32(py, rasterWidth));
+	
 	__m128i windingAndCover = _mm_sub_epi32(qbx, qex);
 
 	__m128i const cGRAIN = _mm_set1_epi32(GRAIN);
@@ -70,34 +85,23 @@ static void RasterizeDots(
 	__m128i area2 = _mm_srli_epi32(skr_abs_epi32(_mm_sub_epi32(qey, qby)), 1);
 	__m128i area3 = skr_max_epi32(qey, qby);
 	__m128i area = _mm_sub_epi32(_mm_add_epi32(area1, area2), area3);
-	
-	uint32_t qbyS[4];
-	_mm_storeu_si128((__m128i *) qbyS, qby);
-	uint32_t qeyS[4];
-	_mm_storeu_si128((__m128i *) qeyS, qey);
-	uint32_t pxS[4], pyS[4];
-	_mm_storeu_si128((__m128i *) pxS, px);
-	_mm_storeu_si128((__m128i *) pyS, py);
-	int32_t windingAndCoverS[4];
-	_mm_storeu_si128((__m128i *) windingAndCoverS, windingAndCover);
-	uint32_t areaS[4];
-	_mm_storeu_si128((__m128i *) areaS, area);
 
-	uint32_t cellIdx[4];
-	int16_t edgeValue[4], tailValue[4];
-	for (int i = 0; i < 4; ++i) {
-		cellIdx[i] = ws->rasterWidth * pyS[i] + pxS[i];
-		edgeValue[i] = windingAndCoverS[i] * areaS[i] / GRAIN;
-		tailValue[i] = windingAndCoverS[i];
-	}
+	__m128i edgeValue = _mm_srai_epi32(skr_mullo_epi32(windingAndCover, area), GRAIN_BITS);
+
+	__m128i edgeAndTail = _mm_packs_epi32(edgeValue, windingAndCover);
+	
+	uint32_t cellIdxS[4];
+	_mm_storeu_si128((__m128i *) cellIdxS, cellIdx);
+	int16_t edgeAndTailS[8];
+	_mm_storeu_si128((__m128i *) edgeAndTailS, edgeAndTail);
 
 	for (int i = 0; i < count; ++i) {
-		uint32_t idx = cellIdx[i];
+		uint32_t idx = cellIdxS[i];
 
 		RasterCell cell = ws->raster[idx];
 
-		cell.edgeValue += edgeValue[i];
-		cell.tailValue += tailValue[i];
+		cell.edgeValue += edgeAndTailS[i];
+		cell.tailValue += edgeAndTailS[i + 4];
 
 		ws->raster[idx] = cell;
 	}
