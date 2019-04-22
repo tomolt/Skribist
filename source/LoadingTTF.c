@@ -629,8 +629,7 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	if (s) return s;
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
-	Workspace ws = { .raster = raster, .dims = dims, .rasterWidth = CalcRasterWidth(dims), .dotBufferCount = 0 };
+	Workspace ws = { raster, dims, CalcRasterWidth(dims) };
 	DrawOutlineWithIntel(&intel, transform, &ws);
-	EndRasterizing(&ws);
 	return SKR_SUCCESS;
 }

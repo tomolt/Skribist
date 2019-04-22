@@ -12,8 +12,7 @@ C standard headers - we can use these even if we don't link with the standard li
 */
 #include <stdint.h>
 #include <limits.h>
-// #include <emmintrin.h> // TODO MSVC
-#include <smmintrin.h>
+#include <emmintrin.h> // TODO MSVC
 
 #include "Skribist.h"
 
@@ -45,19 +44,10 @@ typedef struct {
 	Point beg, end, ctrl;
 } Curve;
 
-typedef struct __attribute__((aligned(16))) {
-	uint32_t qbx[4];
-	uint32_t qby[4];
-	uint32_t qex[4];
-	uint32_t qey[4];
-} DotBuffer;
-
 typedef struct {
 	RasterCell * restrict raster;
 	SKR_Dimensions dims;
 	uint32_t rasterWidth;
-	int dotBufferCount;
-	DotBuffer dotBuffer;
 } Workspace;
 
 static int CompareStrings(char const * a, char const * b, long n)

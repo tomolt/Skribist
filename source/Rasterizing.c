@@ -1,10 +1,4 @@
-#define GRAIN_BITS 8
-#define GRAIN (1 << GRAIN_BITS)
-
-static uint32_t CalcRasterWidth(SKR_Dimensions dims)
-{
-	return (dims.width + 7) & ~7;
-}
+#define GRAIN 256
 
 static float CalcStepSize(float diff)
 {
@@ -22,59 +16,28 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 	}
 }
 
-static void RasterizeDots(Workspace * restrict ws, int count)
-{
-	__m128i qbx = _mm_load_si128((__m128i *) ws->dotBuffer.qbx);
-	__m128i qby = _mm_load_si128((__m128i *) ws->dotBuffer.qby);
-	__m128i qex = _mm_load_si128((__m128i *) ws->dotBuffer.qex);
-	__m128i qey = _mm_load_si128((__m128i *) ws->dotBuffer.qey);
-
-	// pixel coordinates
-	__m128i px = _mm_srli_epi32(_mm_min_epi32(qbx, qex), GRAIN_BITS);
-	__m128i py = _mm_srli_epi32(_mm_min_epi32(qby, qey), GRAIN_BITS);
-
-	__m128i rasterWidth = _mm_set1_epi32(ws->rasterWidth);
-	__m128i idx = _mm_add_epi32(_mm_mullo_epi32(rasterWidth, py), px);
-
-	__m128i windingAndCover = _mm_sub_epi32(qbx, qex);
-	__m128i area = _mm_set1_epi32(GRAIN);
-	area = _mm_add_epi32(area, _mm_srai_epi32(
-		_mm_abs_epi32(_mm_sub_epi32(qey, qby)), 1));
-	area = _mm_sub_epi32(area, _mm_max_epi32(qey, qby));
-	area = _mm_add_epi32(area, _mm_slli_epi32(py, GRAIN_BITS));
-	__m128i edge = _mm_srai_epi32(_mm_mullo_epi32(windingAndCover, area), GRAIN_BITS);
-	
-	__attribute__((aligned(16))) uint32_t idxS[4];
-	_mm_store_si128((__m128i *) idxS, idx);
-	__attribute__((aligned(16))) int32_t edgeS[4];
-	_mm_store_si128((__m128i *) edgeS, edge);
-	__attribute__((aligned(16))) int32_t tailS[4];
-	_mm_store_si128((__m128i *) tailS, windingAndCover);
-
-	for (int i = 0; i < count; ++i) {
-		uint32_t curIdx = idxS[i];
-
-		RasterCell cell = ws->raster[curIdx];
-
-		cell.edgeValue += edgeS[i];
-		cell.tailValue += tailS[i];
-
-		ws->raster[curIdx] = cell;
-	}
-}
-
-static void QueueDot(Workspace * restrict ws,
+static void RasterizeDot(
+	Workspace * restrict ws,
 	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
-	if (ws->dotBufferCount == 4) {
-		RasterizeDots(ws, 4);
-		ws->dotBufferCount = 0;
-	}
-	int i = ws->dotBufferCount++;
-	ws->dotBuffer.qbx[i] = qbx;
-	ws->dotBuffer.qby[i] = qby;
-	ws->dotBuffer.qex[i] = qex;
-	ws->dotBuffer.qey[i] = qey;
+	// pixel coordinates
+	uint32_t px = min(qbx, qex) / GRAIN;
+	uint32_t py = min(qby, qey) / GRAIN;
+
+	SKR_assert(px < ws->dims.width);
+	SKR_assert(py < ws->dims.height);
+
+	uint32_t idx = ws->rasterWidth * py + px;
+
+	int windingAndCover = -(qex - qbx); // winding * cover
+	int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
+
+	RasterCell cell = ws->raster[idx];
+
+	cell.edgeValue += windingAndCover * area / GRAIN;
+	cell.tailValue += windingAndCover;
+
+	ws->raster[idx] = cell;
 }
 
 #define QUANTIZE(x) ((uint32_t) ((x) * (float) GRAIN + 0.5f))
@@ -114,7 +77,7 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 		uint32_t qx = QUANTIZE(line.beg.x + t * dx);
 		uint32_t qy = QUANTIZE(line.beg.y + t * dy);
 
-		QueueDot(ws, prev_qx, prev_qy, qx, qy);
+		RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 
 		prev_qx = qx;
 		prev_qy = qy;
@@ -123,21 +86,13 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	uint32_t qx = QUANTIZE(line.end.x);
 	uint32_t qy = QUANTIZE(line.end.y);
 
-	QueueDot(ws, prev_qx, prev_qy, qx, qy);
+	RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 }
 
 static void DrawLine(Workspace * restrict ws, Line line)
 {
 	if (gabs(line.end.x - line.beg.x) >= 1.0f / GRAIN) {
 		RasterizeLine(ws, line);
-	}
-}
-
-static void EndRasterizing(Workspace * restrict ws)
-{
-	if (ws->dotBufferCount > 0) {
-		RasterizeDots(ws, ws->dotBufferCount);
-		ws->dotBufferCount = 0;
 	}
 }
 
@@ -160,6 +115,11 @@ void skrInitializeLibrary(void)
 	for (int i = 0; i <= GRAIN; ++i) {
 		LinearToGamma[i] = round(CalcLinearToGamma(i / (float) GRAIN) * 255.0);
 	}
+}
+
+uint32_t CalcRasterWidth(SKR_Dimensions dims)
+{
+	return (dims.width + 7) & ~7;
 }
 
 // TODO get rid of this function
