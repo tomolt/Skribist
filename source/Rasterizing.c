@@ -43,20 +43,21 @@ static void RasterizeDots(Workspace * restrict ws, int count)
 	area = _mm_sub_epi32(area, _mm_max_epi32(qey, qby));
 	area = _mm_add_epi32(area, _mm_slli_epi32(py, GRAIN_BITS));
 	__m128i edge = _mm_srai_epi32(_mm_mullo_epi32(windingAndCover, area), GRAIN_BITS);
-	__m128i edgeAndTail = _mm_packs_epi32(edge, windingAndCover);
 	
 	__attribute__((aligned(16))) uint32_t idxS[4];
 	_mm_store_si128((__m128i *) idxS, idx);
-	__attribute__((aligned(16))) int16_t edgeAndTailS[8];
-	_mm_store_si128((__m128i *) edgeAndTailS, edgeAndTail);
+	__attribute__((aligned(16))) int32_t edgeS[4];
+	_mm_store_si128((__m128i *) edgeS, edge);
+	__attribute__((aligned(16))) int32_t tailS[4];
+	_mm_store_si128((__m128i *) tailS, windingAndCover);
 
 	for (int i = 0; i < count; ++i) {
 		uint32_t curIdx = idxS[i];
 
 		RasterCell cell = ws->raster[curIdx];
 
-		cell.edgeValue += edgeAndTailS[i];
-		cell.tailValue += edgeAndTailS[i + 4];
+		cell.edgeValue += edgeS[i];
+		cell.tailValue += tailS[i];
 
 		ws->raster[curIdx] = cell;
 	}
