@@ -18,16 +18,16 @@ static void RasterizeDot(
 	Workspace * restrict ws,
 	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
-	uint_fast32_t qlx = min(qbx, qex);
-	uint_fast32_t qly = min(qby, qey);
+	uint32_t qlx = min(qbx, qex);
+	uint32_t qly = min(qby, qey);
 
-	uint_fast32_t idx = ws->rasterWidth * (qly / GRAIN) + qlx / GRAIN;
+	uint32_t idx = ws->rasterWidth * (qly / GRAIN) + qlx / GRAIN;
 
 	uint32_t cell = ws->raster[idx];
 
-	int_fast32_t windingAndCover = qbx - qex;
-	int_fast32_t area = GRAIN - gabs(qby - qey) / 2 - (qly & (GRAIN - 1));
-	int_fast32_t edgeValue = windingAndCover * area / GRAIN;
+	int32_t windingAndCover = qbx - qex;
+	int32_t area = GRAIN - gabs(qby - qey) / 2 - (qly & (GRAIN - 1));
+	int32_t edgeValue = windingAndCover * area / GRAIN;
 
 	cell = cell + ((edgeValue & 0xFFFF) | (windingAndCover << 16));
 
