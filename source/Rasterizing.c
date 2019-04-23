@@ -165,10 +165,14 @@ void skrCastImage(
 			__m128i shuf3 = _mm_shuffle_epi32(shuf2, SHUFFLE_MASK);
 
 			__m128i compactValues = _mm_packus_epi16(shuf3, _mm_setzero_si128());
-			int togo = dims.width - col;
-			__attribute__((aligned(8))) char pixels[8];
-			_mm_storel_epi64((__m128i *) pixels, compactValues);
-			memcpy(pixel, pixels, min(togo, 8));
+			int toGo = dims.width - col;
+			if (toGo >= 8) {
+				_mm_storeu_si64(pixel, compactValues);
+			} else {
+				__attribute__((aligned(8))) char pixels[8];
+				_mm_storel_epi64((__m128i *) pixels, compactValues);
+				memcpy(pixel, pixels, toGo);
+			}
 		}
 		// TODO assertion
 	}
