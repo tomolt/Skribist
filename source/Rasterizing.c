@@ -10,33 +10,33 @@ static void RasterizeDots(
 	Workspace * restrict ws, int count,
 	float startX, float startY, float endX[4], float endY[4])
 {
-	uint32_t qex[4], qey[4];
-	for (int i = 0; i < 4; ++i) {
-		qex[i] = Quantize(endX[i]);
-		qey[i] = Quantize(endY[i]);
-	}
-
-	uint32_t qbx[4], qby[4];
-	qbx[0] = Quantize(startX);
-	qby[0] = Quantize(startY);
+	float begX[4], begY[4];
+	begX[0] = startX;
+	begY[0] = startY;
 	for (int i = 1; i < 4; ++i) {
-		qbx[i] = qex[i - 1];
-		qby[i] = qey[i - 1];
+		begX[i] = endX[i - 1];
+		begY[i] = endY[i - 1];
 	}
 
 	uint32_t cellIdx[4];
 	int16_t edgeValue[4], tailValue[4];
+
 	for (int i = 0; i < 4; ++i) {
-		uint32_t px = min(qbx[i], qex[i]) >> GRAIN_BITS;
-		uint32_t py = min(qby[i], qey[i]) >> GRAIN_BITS;
+		uint32_t qbx = Quantize(begX[i]);
+		uint32_t qby = Quantize(begY[i]);
+		uint32_t qex = Quantize(endX[i]);
+		uint32_t qey = Quantize(endY[i]);
+
+		uint32_t px = min(qbx, qex) >> GRAIN_BITS;
+		uint32_t py = min(qby, qey) >> GRAIN_BITS;
 
 		SKR_assert(px < ws->dims.width);
 		SKR_assert(py < ws->dims.height);
 
-		int32_t windingAndCover = qbx[i] - qex[i];
+		int32_t windingAndCover = qbx - qex;
 		uint32_t area = GRAIN;
-		area += gabs(qey[i] - qby[i]) >> 1;
-		area -= max(qey[i], qby[i]);
+		area += gabs(qey - qby) >> 1;
+		area -= max(qey, qby);
 		area += py << GRAIN_BITS;
 
 		cellIdx[i] = ws->rasterWidth * py + px;
