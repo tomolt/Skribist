@@ -17,16 +17,8 @@ static float FindFirstCrossing(float beg, float diff, float stepSize)
 
 static void RasterizeDots(
 	Workspace * restrict ws, int count,
-	float startX, float startY, float ex[4], float ey[4])
+	float bx[4], float by[4], float ex[4], float ey[4])
 {
-	float bx[4], by[4];
-	bx[0] = startX;
-	by[0] = startY;
-	for (int i = 1; i < 4; ++i) {
-		bx[i] = ex[i - 1];
-		by[i] = ey[i - 1];
-	}
-
 	for (int i = 0; i < count; ++i) {
 		uint32_t qbx = QUANTIZE(bx[i]);
 		uint32_t qby = QUANTIZE(by[i]);
@@ -73,9 +65,9 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
 	int count = 0;
-	float startX, startY, ex[4], ey[4];
-	startX = line.beg.x;
-	startY = line.beg.y;
+	float bx[4], by[4], ex[4], ey[4];
+	bx[0] = line.beg.x;
+	by[0] = line.beg.y;
 
 	while (xt < 1.0f || yt < 1.0f) {
 		float t;
@@ -96,11 +88,12 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 		++count;
 
 		if (count > 3) {
-			RasterizeDots(ws, count, startX, startY, ex, ey);
-			startX = curX;
-			startY = curY;
+			RasterizeDots(ws, count, bx, by, ex, ey);
 			count = 0;
 		}
+
+		bx[count] = curX;
+		by[count] = curY;
 	}
 
 	ex[count] = line.end.x;
@@ -108,7 +101,7 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 
 	++count;
 
-	RasterizeDots(ws, count, startX, startY, ex, ey);
+	RasterizeDots(ws, count, bx, by, ex, ey);
 }
 
 static void DrawLine(Workspace * restrict ws, Line line)
