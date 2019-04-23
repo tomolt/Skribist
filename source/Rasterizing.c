@@ -1,4 +1,5 @@
-#define GRAIN 256
+#define GRAIN_BITS 8
+#define GRAIN (1 << GRAIN_BITS)
 
 static float CalcStepSize(float diff)
 {
@@ -17,17 +18,16 @@ static void RasterizeDot(
 	Workspace * restrict ws,
 	uint32_t qbx, uint32_t qby, uint32_t qex, uint32_t qey)
 {
-	// pixel coordinates
-	uint32_t px = min(qbx, qex) / GRAIN;
-	uint32_t py = min(qby, qey) / GRAIN;
+	uint32_t qlx = min(qbx, qex);
+	uint32_t qly = min(qby, qey);
 
-	SKR_assert(px < ws->dims.width);
-	SKR_assert(py < ws->dims.height);
+	uint32_t px = qlx / GRAIN;
+	uint32_t py = qly / GRAIN;
 
 	uint32_t idx = ws->rasterWidth * py + px;
 
-	int windingAndCover = -(qex - qbx); // winding * cover
-	int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
+	int windingAndCover = qbx - qex;
+	int area = GRAIN - gabs(qby - qey) / 2 - (qly & (GRAIN - 1));
 
 	RasterCell cell = ws->raster[idx];
 
