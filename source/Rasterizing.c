@@ -1,70 +1,55 @@
 #define GRAIN_BITS 8
 #define GRAIN (1 << GRAIN_BITS)
 
-static __m128i skr_min_epi32(__m128i a, __m128i b)
+static uint32_t Quantize(float value)
 {
-	__m128i mask = _mm_cmplt_epi32(a, b);
-	__m128i maskedA = _mm_and_si128(mask, a);
-	__m128i maskedB = _mm_andnot_si128(mask, b);
-	return _mm_or_si128(maskedA, maskedB);
-}
-
-static __m128i Quantize(__m128 value)
-{
-	__m128 const cGRAIN = _mm_set1_ps(GRAIN);
-	__m128 const c0_5 = _mm_set1_ps(0.5f);
-
-	value = _mm_mul_ps(value, cGRAIN);
-	value = _mm_add_ps(value, c0_5);
-	return _mm_cvtps_epi32(value);
+	value *= GRAIN;
+	value += 0.5f;
+	return (uint32_t) value;
 }
 
 static void RasterizeDots(
 	Workspace * restrict ws, int count,
 	float start[2], float ends[4][2])
 {
-	__m128 endX = _mm_set_ps(
-		ends[3][0], ends[2][0], ends[1][0], ends[0][0]);
-	__m128 endY = _mm_set_ps(
-		ends[3][1], ends[2][1], ends[1][1], ends[0][1]);
+	float endX[4], endY[4];
+	for (int i = 0; i < 4; ++i) {
+		endX[i] = ends[i][0];
+		endY[i] = ends[i][1];
+	}
 
-	__m128i qex = Quantize(endX);
-	__m128i qey = Quantize(endY);
+	uint32_t qex[4], qey[4];
+	for (int i = 0; i < 4; ++i) {
+		qex[i] = Quantize(endX[i]);
+		qey[i] = Quantize(endY[i]);
+	}
 
-	uint32_t qbx0 = start[0] * GRAIN + 0.5f;
-	uint32_t qby0 = start[1] * GRAIN + 0.5f;
-	__m128i qbx = _mm_bslli_si128(qex, 4);
-	__m128i qby = _mm_bslli_si128(qey, 4);
-	qbx = _mm_or_si128(qbx, _mm_loadu_si32(&qbx0));
-	qby = _mm_or_si128(qby, _mm_loadu_si32(&qby0));
-
-	__m128i px = skr_min_epi32(qbx, qex);
-	__m128i py = skr_min_epi32(qby, qey);
-	px = _mm_srli_epi32(px, GRAIN_BITS);
-	py = _mm_srli_epi32(py, GRAIN_BITS);
-
-	// TODO assert for px / py bounds
-	
-	uint32_t qbxS[4], qbyS[4];
-	_mm_storeu_si128((__m128i *) qbxS, qbx);
-	_mm_storeu_si128((__m128i *) qbyS, qby);
-	uint32_t qexS[4], qeyS[4];
-	_mm_storeu_si128((__m128i *) qexS, qex);
-	_mm_storeu_si128((__m128i *) qeyS, qey);
-	uint32_t pxS[4], pyS[4];
-	_mm_storeu_si128((__m128i *) pxS, px);
-	_mm_storeu_si128((__m128i *) pyS, py);
+	uint32_t qbx[4], qby[4];
+	qbx[0] = Quantize(start[0]);
+	qby[0] = Quantize(start[1]);
+	for (int i = 1; i < 4; ++i) {
+		qbx[i] = qex[i - 1];
+		qby[i] = qey[i - 1];
+	}
 
 	uint32_t cellIdx[4];
 	int16_t edgeValue[4], tailValue[4];
 	for (int i = 0; i < 4; ++i) {
-		int32_t windingAndCover = qbxS[i] - qexS[i];
-		uint32_t area = GRAIN;
-		area += gabs(qeyS[i] - qbyS[i]) >> 1;
-		area -= max(qeyS[i], qbyS[i]);
-		area += pyS[i] << GRAIN_BITS;
+		uint32_t px = min(qbx[i], qex[i]);
+		uint32_t py = min(qby[i], qey[i]);
+		px >>= GRAIN_BITS;
+		py >>= GRAIN_BITS;
 
-		cellIdx[i] = ws->rasterWidth * pyS[i] + pxS[i];
+		SKR_assert(px < ws->dims.width);
+		SKR_assert(py < ws->dims.height);
+
+		int32_t windingAndCover = qbx[i] - qex[i];
+		uint32_t area = GRAIN;
+		area += gabs(qey[i] - qby[i]) >> 1;
+		area -= max(qey[i], qby[i]);
+		area += py << GRAIN_BITS;
+
+		cellIdx[i] = ws->rasterWidth * py + px;
 		edgeValue[i] = windingAndCover * area / GRAIN;
 		tailValue[i] = windingAndCover;
 	}
