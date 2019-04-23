@@ -88,22 +88,20 @@ static void RasterizeDots(
 
 	__m128i edgeValue = _mm_srai_epi32(skr_mullo_epi32(windingAndCover, area), GRAIN_BITS);
 
-	__m128i edgeAndTail = _mm_packs_epi32(edgeValue, windingAndCover);
+	__m128i const c0 = _mm_setzero_si128();
+	__m128i packedEdge = _mm_packs_epi32(edgeValue, c0);
+	__m128i packedTail = _mm_packs_epi32(windingAndCover, c0);
+
+	__m128i delta = _mm_unpacklo_epi16(packedEdge, packedTail);
 	
 	uint32_t cellIdxS[4];
 	_mm_storeu_si128((__m128i *) cellIdxS, cellIdx);
-	int16_t edgeAndTailS[8];
-	_mm_storeu_si128((__m128i *) edgeAndTailS, edgeAndTail);
 
 	for (int i = 0; i < count; ++i) {
-		uint32_t idx = cellIdxS[i];
-
-		RasterCell cell = ws->raster[idx];
-
-		cell.edgeValue += edgeAndTailS[i];
-		cell.tailValue += edgeAndTailS[i + 4];
-
-		ws->raster[idx] = cell;
+		__m128i cell = _mm_loadu_si32(&ws->raster[cellIdxS[i]]);
+		cell = _mm_adds_epi16(cell, delta);
+		_mm_storeu_si32(&ws->raster[cellIdxS[i]], cell);
+		delta = _mm_bsrli_si128(delta, 4);
 	}
 }
 
