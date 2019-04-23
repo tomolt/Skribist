@@ -61,10 +61,7 @@ typedef struct {
 	long xMin, yMin, xMax, yMax;
 } SKR_Bounds;
 
-typedef struct {
-	short edgeValue;
-	short tailValue;
-} RasterCell;
+typedef uint32_t RasterCell;
 
 void skrInitializeLibrary(void);
 SKR_Status skrInitializeFont(SKR_Font * restrict font);
