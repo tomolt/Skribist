@@ -27,10 +27,7 @@ static void RasterizeDots(
 		by[i] = ey[i - 1];
 	}
 
-	uint32_t cellIdx[4];
-	int16_t edgeValue[4], tailValue[4];
-
-	for (int i = 0; i < 4; ++i) {
+	for (int i = 0; i < count; ++i) {
 		uint32_t qbx = QUANTIZE(bx[i]);
 		uint32_t qby = QUANTIZE(by[i]);
 		uint32_t qex = QUANTIZE(ex[i]);
@@ -42,24 +39,15 @@ static void RasterizeDots(
 		SKR_assert(px < ws->dims.width);
 		SKR_assert(py < ws->dims.height);
 
-		int32_t windingAndCover = qbx - qex;
-		uint32_t area = GRAIN;
-		area += gabs(qey - qby) >> 1;
-		area -= max(qey, qby);
-		area += py * GRAIN;
+		uint32_t idx = ws->rasterWidth * py + px;
 
-		cellIdx[i] = ws->rasterWidth * py + px;
-		edgeValue[i] = windingAndCover * area / GRAIN;
-		tailValue[i] = windingAndCover;
-	}
-
-	for (int i = 0; i < count; ++i) {
-		uint32_t idx = cellIdx[i];
+		int windingAndCover = qbx - qex;
+		int area = gabs(qey - qby) / 2 + GRAIN - (max(qey, qby) - py * GRAIN);
 
 		RasterCell cell = ws->raster[idx];
 
-		cell.edgeValue += edgeValue[i];
-		cell.tailValue += tailValue[i];
+		cell.edgeValue += windingAndCover * area / GRAIN;
+		cell.tailValue += windingAndCover;
 
 		ws->raster[idx] = cell;
 	}
