@@ -3,21 +3,13 @@
 
 static uint32_t Quantize(float value)
 {
-	value *= GRAIN;
-	value += 0.5f;
-	return (uint32_t) value;
+	return (uint32_t) (value * GRAIN + 0.5f);
 }
 
 static void RasterizeDots(
 	Workspace * restrict ws, int count,
-	float start[2], float ends[4][2])
+	float startX, float startY, float endX[4], float endY[4])
 {
-	float endX[4], endY[4];
-	for (int i = 0; i < 4; ++i) {
-		endX[i] = ends[i][0];
-		endY[i] = ends[i][1];
-	}
-
 	uint32_t qex[4], qey[4];
 	for (int i = 0; i < 4; ++i) {
 		qex[i] = Quantize(endX[i]);
@@ -25,8 +17,8 @@ static void RasterizeDots(
 	}
 
 	uint32_t qbx[4], qby[4];
-	qbx[0] = Quantize(start[0]);
-	qby[0] = Quantize(start[1]);
+	qbx[0] = Quantize(startX);
+	qby[0] = Quantize(startY);
 	for (int i = 1; i < 4; ++i) {
 		qbx[i] = qex[i - 1];
 		qby[i] = qey[i - 1];
@@ -35,10 +27,8 @@ static void RasterizeDots(
 	uint32_t cellIdx[4];
 	int16_t edgeValue[4], tailValue[4];
 	for (int i = 0; i < 4; ++i) {
-		uint32_t px = min(qbx[i], qex[i]);
-		uint32_t py = min(qby[i], qey[i]);
-		px >>= GRAIN_BITS;
-		py >>= GRAIN_BITS;
+		uint32_t px = min(qbx[i], qex[i]) >> GRAIN_BITS;
+		uint32_t py = min(qby[i], qey[i]) >> GRAIN_BITS;
 
 		SKR_assert(px < ws->dims.width);
 		SKR_assert(py < ws->dims.height);
@@ -99,9 +89,9 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	float yt = FindFirstCrossing(line.beg.y, dy, sy);
 
 	int count = 0;
-	float start[2], ends[4][2];
-	start[0] = line.beg.x;
-	start[1] = line.beg.y;
+	float startX, startY, endX[4], endY[4];
+	startX = line.beg.x;
+	startY = line.beg.y;
 
 	while (xt < 1.0f || yt < 1.0f) {
 		float t;
@@ -113,29 +103,28 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 			yt += sy;
 		}
 
-		float cur[2];
-		cur[0] = line.beg.x + t * dx;
-		cur[1] = line.beg.y + t * dy;
+		float curX = line.beg.x + t * dx;
+		float curY = line.beg.y + t * dy;
 
-		ends[count][0] = cur[0];
-		ends[count][1] = cur[1];
+		endX[count] = curX;
+		endY[count] = curY;
 
 		++count;
 
 		if (count > 3) {
-			RasterizeDots(ws, count, start, ends);
-			start[0] = cur[0];
-			start[1] = cur[1];
+			RasterizeDots(ws, count, startX, startY, endX, endY);
+			startX = curX;
+			startY = curY;
 			count = 0;
 		}
 	}
 
-	ends[count][0] = line.end.x;
-	ends[count][1] = line.end.y;
+	endX[count] = line.end.x;
+	endY[count] = line.end.y;
 
 	++count;
 
-	RasterizeDots(ws, count, start, ends);
+	RasterizeDots(ws, count, startX, startY, endX, endY);
 }
 
 static void DrawLine(Workspace * restrict ws, Line line)
