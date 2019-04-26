@@ -5,27 +5,30 @@
 - A rasterizer with pixel-perfect anti-aliasing
 - An example program outputting BMP files
 - Sample code to mmap a file on Windows or Unix (in limbo right now)
+- Example program with SDL2
+- cmap format 4
+- SIMD rasterizer optimization
 ### To be done before v1.0
-- Fix that one 1-pixel discrepancy border glitch
 - Manual array bounds checking in the entire TTF loader
 - Verifying min / max values in TTF data
-- cmap
+- cmap format 6
 - Text composing
 - Kerning
 - Output format controllable by a generous list of enums ala OpenGL
 - Gamma Correction
-- General API cleanup
-- Example program with SDL2
+- bmp example UTF8
+- stb truetype compatibility layer
+- take image stride
 ### Coming after v1.0
-- Font Collections
+- avx2?
+- Font Collections?
 - Compound glyphs
 - Vertical composing
 - Total independence from the C stdlib
 - nostdlib example program maybe?
 - UTF16 convenience functions
-- SIMD rasterizer optimization
 - A subset of the Unicode BiDi Algorithm
-- More cmap encodings
+- More cmap formats
 - Utilising GPOS, GSUB, JUSTF tables
 - Optional sub-pixel rendering for LCD screens
 - Ideomatic C++ wrapper
