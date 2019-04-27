@@ -132,11 +132,11 @@ static void TransposeCells(RasterCell const cells[8],
 
 	__m128i lowerEdges = _mm_and_si128(lowerCells, edgeMask);
 	__m128i upperEdges = _mm_and_si128(upperCells, edgeMask);
-	*edgeValues = _mm_packs_epi32(lowerEdges, upperEdges);
+	*edgeValues = _mm_packus_epi32(lowerEdges, upperEdges);
 
 	__m128i lowerTails = _mm_srli_epi32(lowerCells, 16);
 	__m128i upperTails = _mm_srli_epi32(upperCells, 16);
-	*tailValues = _mm_packs_epi32(lowerTails, upperTails);
+	*tailValues = _mm_packus_epi32(lowerTails, upperTails);
 }
 
 void skrCastImage(

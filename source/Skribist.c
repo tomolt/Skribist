@@ -13,6 +13,7 @@ C standard headers - we can use these even if we don't link with the standard li
 #include <stdint.h>
 #include <limits.h>
 #include <emmintrin.h> // TODO MSVC
+#include <smmintrin.h>
 
 #include "Skribist.h"
 
