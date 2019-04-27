@@ -17,7 +17,7 @@ C standard headers - we can use these even if we don't link with the standard li
 
 #include "Skribist.h"
 
-#if 0
+#if 1
 #define SKR_assert(stmt) assert(stmt)
 #else
 #define SKR_assert(stmt) do {} while (0)

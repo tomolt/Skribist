@@ -160,7 +160,7 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
 			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
 		}
-		// TODO assertion
+		SKR_assert(_mm_movemask_epi8(_mm_cmpeq_epi8(accumulator, _mm_setzero_si128())) == 0xFFFF);
 	}
 }
 
