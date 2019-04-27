@@ -126,11 +126,15 @@ static void TransposeCells(RasterCell const cells[8],
 	__m128i * restrict edgeValues, __m128i * restrict tailValues)
 {
 	int16_t edgeValuesS[8], tailValuesS[8];
+
 	for (int i = 0; i < 8; ++i) {
 		edgeValuesS[i] = cells[i] & 0xFFFF;
-		tailValuesS[i] = cells[i] >> 16;
 	}
 	*edgeValues = _mm_loadu_si128((__m128i const *) edgeValuesS);
+
+	for (int i = 0; i < 8; ++i) {
+		tailValuesS[i] = cells[i] >> 16;
+	}
 	*tailValues = _mm_loadu_si128((__m128i const *) tailValuesS);
 }
 
