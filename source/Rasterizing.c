@@ -161,6 +161,7 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 			__m128i * restrict pointer = (__m128i *) cursor;
 			__m128i cellValue = _mm_adds_epi16(accumulator, *pointer);
 			accumulator = _mm_adds_epi16(accumulator, *(pointer + 1));
+			cellValue = _mm_max_epi16(cellValue, _mm_setzero_si128());
 			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
 			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
 		}
