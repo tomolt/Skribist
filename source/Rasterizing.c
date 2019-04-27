@@ -20,6 +20,9 @@ static void RasterizeDot(
 {
 	uint32_t qlx = min(qbx, qex);
 	uint32_t qly = min(qby, qey);
+	
+	SKR_assert(qlx / GRAIN < ws->dims.width);
+	SKR_assert(qly / GRAIN < ws->dims.height);
 
 	uint32_t idx = ws->rasterWidth * (qly / GRAIN) + qlx / GRAIN;
 
@@ -29,7 +32,8 @@ static void RasterizeDot(
 	int32_t area = GRAIN - gabs(qby - qey) / 2 - (qly & (GRAIN - 1));
 	int32_t edgeValue = windingAndCover * area / GRAIN;
 
-	cell = cell + ((edgeValue & 0xFFFF) | (windingAndCover << 16));
+	((int16_t * restrict) &cell)[0] += edgeValue;
+	((int16_t * restrict) &cell)[1] += windingAndCover;
 
 	ws->raster[idx] = cell;
 }
