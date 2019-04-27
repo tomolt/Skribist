@@ -163,6 +163,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
+	skrTransposeRaster(raster, dims);
 	skrCastImage(raster, image, dims);
 
 	write_bmp(image, outFile, dims);
