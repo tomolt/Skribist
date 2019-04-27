@@ -56,18 +56,17 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform trans
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
-	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
 	SKR_Status s = skrDrawOutline(font, glyph, transform2, raster, dims);
 
 	if (!s) {
 		++OutlineCounter;
 		skrTransposeRaster(raster, dims);
-		skrAccumulateRaster(raster, image, dims);
+		skrAccumulateRaster(raster, dims);
+		skrExportImage(raster, dims);
 	}
 
 	free(raster);
-	free(image);
 }
 
 int main(int argc, char const *argv[])

@@ -146,38 +146,19 @@ void skrTransposeRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 	}
 }
 
-void skrAccumulateRaster(
-	RasterCell const * restrict source,
-	unsigned char * restrict dest,
-	SKR_Dimensions dims)
+void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
-
 	for (long col = 0; col < width; col += 8) {
-
-		uint32_t const * restrict sourceCursor = source + col;
-		unsigned char * restrict destCursor = dest + col;
-
+		uint32_t * cursor = raster + col;
 		__m128i accumulator = _mm_setzero_si128();
-
-		for (long i = 0; i < dims.height; ++i,
-				sourceCursor += width, destCursor += dims.width) {
-			__m128i const * restrict sourcePointer = (__m128i const *) sourceCursor;
-
-			__m128i pixelValue = _mm_adds_epi16(accumulator, *sourcePointer);
-			accumulator = _mm_adds_epi16(accumulator, *(sourcePointer + 1));
-			
-			__m128i compactValue = _mm_packus_epi16(pixelValue, _mm_setzero_si128());
-
-			int headroom = dims.width - col;
-			if (headroom >= 8) {
-				_mm_storeu_si64(destCursor, compactValue);
-			} else {
-				__attribute__((aligned(8))) char buffer[8];
-				_mm_storel_epi64((__m128i *) buffer, compactValue);
-				memcpy(destCursor, buffer, headroom);
-			}
+		for (long i = 0; i < dims.height; ++i, cursor += width) {
+			__m128i * restrict pointer = (__m128i *) cursor;
+			__m128i cellValue = _mm_adds_epi16(accumulator, *pointer);
+			accumulator = _mm_adds_epi16(accumulator, *(pointer + 1));
+			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
+			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
 		}
 		// TODO assertion
 	}
@@ -207,11 +188,21 @@ void skrAccumulateRaster(
 	SKR_RGBA_64_UINT,
 	SKR_RGB_96_FLOAT,
 	SKR_RGBA_128_FLOAT
+#endif
 
-void skrConvertImage(unsigned char const * restrict source, unsigned char * restrict dest, SKR_Dimensions dims, SKR_Format destFormat))
+void skrExportImage(RasterCell * restrict raster, SKR_Dimensions dims)
 {
-	for (long i = 0; i < dims.width * dims.height; ++i) {
+	// TODO read from workspace instead
+	long const width = CalcRasterWidth(dims);
+	unsigned char * restrict image = (unsigned char *) raster;
+	for (long row = 0; row < dims.height; ++row) {
+		for (long col = 0; col < dims.width; ++col) {
+			int grayValue = raster[width * row + col];
+			grayValue = min(max(grayValue, 0), 255);
+			image[3 * (dims.width * row + col) + 0] = grayValue; 
+			image[3 * (dims.width * row + col) + 1] = grayValue; 
+			image[3 * (dims.width * row + col) + 2] = grayValue; 
+		}
 	}
 }
-#endif
 

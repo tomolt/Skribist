@@ -85,13 +85,8 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 	hdr[26] = 1; // color planes
 	hdr[28] = 24; // bpp
 	fwrite(hdr, 1, 54, outFile);
-	for (uint32_t y = 0; y < dim.height; ++y) {
-		for (uint32_t x = 0; x < dim.width; ++x) {
-			unsigned char c = image[dim.width * y + x];
-			fputc(c, outFile); // r
-			fputc(c, outFile); // g
-			fputc(c, outFile); // b
-		}
+	for (long row = 0; row < dim.height; ++row) {
+		fwrite(image + 3 * dim.width * row, 3, dim.width, outFile);
 		// padding the scanline!
 		for (int p = 0; p < padPerLine; ++p) {
 			fputc(0, outFile);
@@ -155,7 +150,6 @@ int main(int argc, char const *argv[])
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
-	unsigned char * image = calloc(dims.width * dims.height, sizeof(unsigned char));
 
 	s = skrDrawOutline(&font, glyph, transform2, raster, dims);
 	if (s != SKR_SUCCESS) {
@@ -164,12 +158,12 @@ int main(int argc, char const *argv[])
 	}
 
 	skrTransposeRaster(raster, dims);
-	skrAccumulateRaster(raster, image, dims);
+	skrAccumulateRaster(raster, dims);
+	skrExportImage(raster, dims);
 
-	write_bmp(image, outFile, dims);
+	write_bmp((unsigned char *) raster, outFile, dims);
 
 	free(raster);
-	free(image);
 
 	fclose(outFile);
 
