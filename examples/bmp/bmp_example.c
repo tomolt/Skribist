@@ -164,7 +164,7 @@ int main(int argc, char const *argv[])
 	}
 
 	skrTransposeRaster(raster, dims);
-	skrCastImage(raster, image, dims);
+	skrAccumulateRaster(raster, image, dims);
 
 	write_bmp(image, outFile, dims);
 

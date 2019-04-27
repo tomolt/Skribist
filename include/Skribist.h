@@ -80,7 +80,7 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims);
 void skrTransposeRaster(
 	RasterCell * restrict raster,
 	SKR_Dimensions dim);
-void skrCastImage(
+void skrAccumulateRaster(
 	RasterCell const * restrict source,
 	unsigned char * restrict dest,
 	SKR_Dimensions dim);

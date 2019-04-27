@@ -146,7 +146,7 @@ void skrTransposeRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 	}
 }
 
-void skrCastImage(
+void skrAccumulateRaster(
 	RasterCell const * restrict source,
 	unsigned char * restrict dest,
 	SKR_Dimensions dims)
@@ -156,26 +156,27 @@ void skrCastImage(
 
 	for (long col = 0; col < width; col += 8) {
 
-		RasterCell const * restrict cell = source + col;
-		unsigned char * restrict pixel = dest + col;
+		uint32_t const * restrict sourceCursor = source + col;
+		unsigned char * restrict destCursor = dest + col;
 
-		__m128i accumulators = _mm_setzero_si128();
+		__m128i accumulator = _mm_setzero_si128();
 
-		for (long i = dims.height; i > 0; --i, cell += width, pixel += dims.width) {
-			__m128i edgeValues = _mm_loadu_si128((__m128i const *) cell);
-			__m128i tailValues = _mm_loadu_si128((__m128i const *) cell + 1);
+		for (long i = 0; i < dims.height; ++i,
+				sourceCursor += width, destCursor += dims.width) {
+			__m128i const * restrict sourcePointer = (__m128i const *) sourceCursor;
 
-			__m128i values = _mm_adds_epi16(accumulators, edgeValues);
-			accumulators = _mm_adds_epi16(accumulators, tailValues);
+			__m128i pixelValue = _mm_adds_epi16(accumulator, *sourcePointer);
+			accumulator = _mm_adds_epi16(accumulator, *(sourcePointer + 1));
 			
-			__m128i compactValues = _mm_packus_epi16(values, _mm_setzero_si128());
-			int toGo = dims.width - col;
-			if (toGo >= 8) {
-				_mm_storeu_si64(pixel, compactValues);
+			__m128i compactValue = _mm_packus_epi16(pixelValue, _mm_setzero_si128());
+
+			int headroom = dims.width - col;
+			if (headroom >= 8) {
+				_mm_storeu_si64(destCursor, compactValue);
 			} else {
-				__attribute__((aligned(8))) char pixels[8];
-				_mm_storel_epi64((__m128i *) pixels, compactValues);
-				memcpy(pixel, pixels, toGo);
+				__attribute__((aligned(8))) char buffer[8];
+				_mm_storel_epi64((__m128i *) buffer, compactValue);
+				memcpy(destCursor, buffer, headroom);
 			}
 		}
 		// TODO assertion
@@ -183,10 +184,33 @@ void skrCastImage(
 }
 
 #if 0
+	SKR_BW_1_BIT,
+
+	SKR_ALPHA_8_UINT,
+	SKR_GRAY_8_SRGB,
+
+	SKR_ALPHA_16_UINT,
+	SKR_RGB_5_6_5_UINT,
+	SKR_BGR_5_6_5_UINT,
+
+	SKR_RGB_24_UINT,
+	SKR_RGB_24_SRGB,
+	SKR_BGR_24_UINT,
+	SKR_BGR_24_SRGB,
+
+	SKR_RGBA_32_UINT,
+	SKR_RGBA_32_SRGB,
+	SKR_BGRA_32_UINT,
+	SKR_BGRA_32_SRGB,
+
+	SKR_RGB_48_UINT,
+	SKR_RGBA_64_UINT,
+	SKR_RGB_96_FLOAT,
+	SKR_RGBA_128_FLOAT
+
 void skrConvertImage(unsigned char const * restrict source, unsigned char * restrict dest, SKR_Dimensions dims, SKR_Format destFormat))
 {
 	for (long i = 0; i < dims.width * dims.height; ++i) {
-		
 	}
 }
 #endif
