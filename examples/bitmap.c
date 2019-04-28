@@ -107,13 +107,13 @@ int main(int argc, char const *argv[])
 	SKR_Status s = SKR_SUCCESS;
 
 	unsigned char *rawData;
-	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
+	ret = read_file("Ubuntu-C.ttf", (void **) &rawData);
 	if (ret != 0) {
 		fprintf(stderr, "Unable to open TTF font file.\n");
 		return EXIT_FAILURE;
 	}
 
-	FILE *outFile = fopen("out.bmp", "wb");
+	FILE *outFile = fopen("bitmap.bmp", "wb");
 	if (outFile == NULL) {
 		fprintf(stderr, "Unable to open output BMP file.\n");
 		return EXIT_FAILURE;

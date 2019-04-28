@@ -7,4 +7,4 @@ if [ -z $CC ]; then
 	CC=clang
 fi
 
-CFLAGS="-std=gnu99 -pedantic -Wall -Wextra -msse4.1"
+CFLAGS="-std=gnu99 -pedantic -Wall -Wextra -msse4.1 -lm"
