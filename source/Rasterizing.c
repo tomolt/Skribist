@@ -194,13 +194,19 @@ void skrExportImage(RasterCell * restrict raster,
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
 	for (long row = 0; row < dims.height; ++row) {
-		for (long col = 0; col < dims.width; ++col) {
-			int grayValue = raster[width * row + col];
-			grayValue = min(max(grayValue, 0), 255);
-			uint32_t pixelValue = grayValue | (grayValue << 8)
-				| (grayValue << 16) | (255 << 24);
+		for (long col = 0; col < dims.width; col += 4) {
+			__m128i value = _mm_loadu_si128((__m128i const *) &raster[width * row + col]);
+			value = _mm_max_epi16(value, _mm_setzero_si128());
+			value = _mm_min_epi16(value, _mm_set1_epi16(0xFF));
+			__m128i lowerChannels = _mm_or_si128(value, _mm_slli_epi32(value, 8));
+			__m128i upperChannels = _mm_or_si128(_mm_slli_epi32(value, 16), _mm_set1_epi32(0xFF << 24));
+			__m128i pixel = _mm_or_si128(lowerChannels, upperChannels);
+			uint32_t pixelS[4];
+			_mm_storeu_si128((__m128i *) pixelS, pixel);
 			unsigned long imageIdx = 4 * (dims.width * row + col);
-			*(uint32_t *) (image + imageIdx) = pixelValue;
+			for (int i = 0; i < min(4, dims.width - col); ++i) {
+				*(uint32_t *) (image + imageIdx + 4 * i) = pixelS[i];
+			}
 		}
 	}
 }
