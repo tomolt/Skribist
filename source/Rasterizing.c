@@ -193,6 +193,7 @@ void skrExportImage(RasterCell * restrict raster,
 	// NOTE this codepath assumes little-endianness
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
+	uint32_t * restrict image32 = (uint32_t *) image;
 	for (long row = 0; row < dims.height; ++row) {
 		for (long col = 0; col < dims.width; col += 4) {
 			__m128i value = _mm_loadu_si128((__m128i const *) &raster[width * row + col]);
@@ -201,11 +202,16 @@ void skrExportImage(RasterCell * restrict raster,
 			__m128i lowerChannels = _mm_or_si128(value, _mm_slli_epi32(value, 8));
 			__m128i upperChannels = _mm_or_si128(_mm_slli_epi32(value, 16), _mm_set1_epi32(0xFF << 24));
 			__m128i pixel = _mm_or_si128(lowerChannels, upperChannels);
-			uint32_t pixelS[4];
-			_mm_storeu_si128((__m128i *) pixelS, pixel);
-			unsigned long imageIdx = 4 * (dims.width * row + col);
-			for (int i = 0; i < min(4, dims.width - col); ++i) {
-				*(uint32_t *) (image + imageIdx + 4 * i) = pixelS[i];
+			unsigned long imageIdx = dims.width * row + col;
+			int headroom = dims.width - col;
+			if (headroom >= 4) {
+				_mm_storeu_si128((__m128i *) &image32[imageIdx], pixel);
+			} else {
+				uint32_t pixelS[4];
+				_mm_storeu_si128((__m128i *) pixelS, pixel);
+				for (int i = 0; i < headroom; ++i) {
+					image32[imageIdx + i] = pixelS[i];
+				}
 			}
 		}
 	}
