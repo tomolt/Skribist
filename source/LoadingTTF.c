@@ -202,12 +202,16 @@ static int GetEncodingPriority(TTF_EncodingRecord const * restrict record)
 	}
 }
 
-static int IsSupportedFormat(BYTES1 * restrict cmapAddr,
-	TTF_EncodingRecord const * restrict record)
+static int GetRecordFormat(BYTES1 * restrict cmapAddr,
+		TTF_EncodingRecord const * restrict record)
+{
+	BYTES1 * restrict addr = cmapAddr + ru32(record->offset);
+	return ru16(*(BYTES2 * restrict) addr);
+}
+
+static int IsSupportedFormat(int format)
 {
 	/* Wanted Formats: 4, 6, 12 */
-	BYTES1 * restrict addr = cmapAddr + ru32(record->offset);
-	int format = ru16(*(BYTES2 * restrict) addr);
 	switch (format) {
 	case 4: return 1;
 	default: return 0;
@@ -249,9 +253,10 @@ static SKR_Status Parse_cmap(SKR_Font * restrict font)
 	for (int i = 0; i < numTables; ++i) {
 		TTF_EncodingRecord const * restrict contender = &cmap->encodingRecords[i];
 		int priority = GetEncodingPriority(contender);
+		int format = GetRecordFormat(cmapAddr, contender);
 
 		if (priority >= bestPriority) continue;
-		if (!IsSupportedFormat(cmapAddr, contender)) continue;
+		if (!IsSupportedFormat(format)) continue;
 
 		record = contender;
 		bestPriority = priority;
@@ -259,8 +264,12 @@ static SKR_Status Parse_cmap(SKR_Font * restrict font)
 	s = bestPriority < INT_MAX ? SKR_SUCCESS : SKR_FAILURE;
 	if (s) return s;
 
-	// TODO formats other than 4
-	s = Parse_cmap_format4(font, ru32(record->offset));
+	int format = GetRecordFormat(cmapAddr, record);
+	switch (format) {
+	case 4:
+		s = Parse_cmap_format4(font, ru32(record->offset));
+		break;
+	}
 
 	return s;
 }
