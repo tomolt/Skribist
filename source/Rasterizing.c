@@ -197,6 +197,7 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 
 void skrExportImage(RasterCell * restrict raster, SKR_Dimensions dims)
 {
+	// NOTE this codepath assumes little-endianness
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
 	unsigned char * restrict image = (unsigned char *) raster;
@@ -204,9 +205,9 @@ void skrExportImage(RasterCell * restrict raster, SKR_Dimensions dims)
 		for (long col = 0; col < dims.width; ++col) {
 			int grayValue = raster[width * row + col];
 			grayValue = min(max(grayValue, 0), 255);
-			image[3 * (dims.width * row + col) + 0] = grayValue; 
-			image[3 * (dims.width * row + col) + 1] = grayValue; 
-			image[3 * (dims.width * row + col) + 2] = grayValue; 
+			uint32_t pixelValue = grayValue | (grayValue << 8) | (grayValue << 16);
+			unsigned long imageIdx = 3 * (dims.width * row + col);
+			*(uint32_t *) (image + imageIdx) = pixelValue;
 		}
 	}
 }
