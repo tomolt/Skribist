@@ -1,7 +1,0 @@
-examples/bmp/bmp_example
-examples/bmp/out.*
-stress/stress.op
-stress/stress.dg
-stress/stress.pg
-stress/gmon.out
-stress/callgrind.out.*
