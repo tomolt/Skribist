@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
 	double elapsedTime; // in seconds
 
 	do {
-		for (double size = 6.0; size <= 48.0; size += 2.0) {
+		for (double size = 10.0; size <= 60.0; size += 2.0) {
 			for (Glyph glyph = 0; glyph < 500; ++glyph) {
 				SKR_Transform transform = { size, size, 0.0, 0.0 };
 				draw_outline(&font, glyph, transform);
