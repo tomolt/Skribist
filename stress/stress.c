@@ -7,8 +7,6 @@
 #include <math.h>
 #include <time.h>
 
-#include <assert.h>
-
 static double time_in_seconds(struct timespec * ts)
 {
     return (double) ts->tv_sec + (double) ts->tv_nsec / 1000000000.0;
@@ -108,17 +106,21 @@ int main(int argc, char const *argv[])
 	clock_gettime(CLOCK_MONOTONIC_RAW, &startTime); // TODO error handling
 	double elapsedTime; // in seconds
 
-	do {
-		for (double size = 10.0; size <= 60.0; size += 2.0) {
-			for (Glyph glyph = 0; glyph < 500; ++glyph) {
+	for (;;) {
+		for (int charCode = 0; charCode < 500; ++charCode) {
+			for (double size = 10.0; size <= 60.0; size += 2.0) {
+				Glyph glyph = skrGlyphFromCode(&font, charCode);
 				SKR_Transform transform = { size, size, 0.0, 0.0 };
 				draw_outline(&font, glyph, transform);
+
+				clock_gettime(CLOCK_MONOTONIC_RAW, &nowTime); // TODO error handling
+				elapsedTime = time_in_seconds(&nowTime) - time_in_seconds(&startTime);
+				if (elapsedTime >= seconds) goto end_test;
 			}
 		}
+	}
+end_test:
 
-		clock_gettime(CLOCK_MONOTONIC_RAW, &nowTime); // TODO error handling
-		elapsedTime = time_in_seconds(&nowTime) - time_in_seconds(&startTime);
-	} while (elapsedTime < seconds);
 	printf("SUMMARY:\n");
 	printf("Drew %lld outlines in %f seconds,\n", OutlineCounter, elapsedTime);
 	printf("Resulting in an average speed of %f kHz.\n", OutlineCounter / (elapsedTime * 1000.0));
