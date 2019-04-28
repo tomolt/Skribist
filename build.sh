@@ -1,11 +1,5 @@
 #!/bin/sh
 
-ENV_ERR="You have to select a C compiler first."
-
-[ -z $CC ] && { echo $ENV_ERR; exit 1; }
-
-CFLAGS="-std=gnu99 -pedantic -Wall -Wextra -msse4.1"
-
 build_all() {
 	# examples
 	$CC $CFLAGS -g -O0 examples/bmp/bmp_example.c -o examples/bmp/bmp_example -Iinclude source/Skribist.c -lm &
@@ -16,4 +10,5 @@ build_all() {
 	wait
 }
 
+source ./environ.sh
 time build_all
