@@ -174,6 +174,14 @@ typedef struct {
 	BYTES2 rangeShift;
 } TTF_cmap_format4;
 
+typedef struct {
+	BYTES2 format;
+	BYTES2 length;
+	BYTES2 language;
+	BYTES2 firstCode;
+	BYTES2 entryCount;
+} TTF_cmap_format6;
+
 /*
 lower is better, INT_MAX means ignore completely.
 */
@@ -213,8 +221,11 @@ static int IsSupportedFormat(int format)
 {
 	/* Wanted Formats: 4, 6, 12 */
 	switch (format) {
-	case 4: return 1;
-	default: return 0;
+	case 4:
+	case 6:
+		return 1;
+	default:
+		return 0;
 	}
 }
 
@@ -235,6 +246,21 @@ static SKR_Status Parse_cmap_format4(SKR_Font * restrict font, unsigned long off
 	fmt4->startCodes = fmt4->endCodes + segCountX2 + 2;
 	fmt4->idDeltas = fmt4->startCodes + segCountX2;
 	fmt4->idRangeOffsets = fmt4->idDeltas + segCountX2;
+
+	return SKR_SUCCESS;
+}
+
+static SKR_Status Parse_cmap_format6(SKR_Font * restrict font, unsigned long offset)
+{
+	font->mappingFormat = 6;
+
+	BYTES1 * restrict addr = (BYTES1 *) font->data + font->cmap.offset + offset;
+	TTF_cmap_format6 const * restrict table = (TTF_cmap_format6 const *) addr;
+	SKR_cmap_format6 * restrict fmt = &font->mapping.format6;
+
+	fmt->firstCode = ru16(table->firstCode);
+	fmt->entryCount = ru16(table->entryCount);
+	fmt->glyphIndexArray = font->cmap.offset + offset + 10;
 
 	return SKR_SUCCESS;
 }
@@ -269,6 +295,11 @@ static SKR_Status Parse_cmap(SKR_Font * restrict font)
 	case 4:
 		s = Parse_cmap_format4(font, ru32(record->offset));
 		break;
+	case 6:
+		s = Parse_cmap_format6(font, ru32(record->offset));
+		break;
+	default:
+		SKR_assert(0);
 	}
 
 	return s;
@@ -364,11 +395,24 @@ static Glyph GlyphFromCode_Format4(SKR_Font const * restrict font, int charCode)
 	return glyph > 0 ? (uint16_t) (glyph + idDelta) : 0;
 }
 
+static Glyph GlyphFromCode_Format6(SKR_Font const * restrict font, unsigned int charCode)
+{
+	SKR_cmap_format6 const * restrict mapping = &font->mapping.format6;
+	if (charCode < mapping->firstCode) return 0;
+	unsigned int relCode = charCode - mapping->firstCode;
+	if (!(relCode < mapping->entryCount)) return 0;
+	BYTES2 * restrict glyphIndexArray =
+		(BYTES2 *) ((BYTES1 *) font->data + mapping->glyphIndexArray);
+	return ru16(glyphIndexArray[relCode]);
+}
+
 Glyph skrGlyphFromCode(SKR_Font const * restrict font, int charCode)
 {
 	switch (font->mappingFormat) {
 	case 4:
 		return GlyphFromCode_Format4(font, charCode);
+	case 6:
+		return GlyphFromCode_Format6(font, charCode);
 	default:
 		SKR_assert(0);
 		return 0;

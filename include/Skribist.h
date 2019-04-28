@@ -25,6 +25,12 @@ typedef struct {
 } SKR_cmap_format4;
 
 typedef struct {
+	unsigned int firstCode;
+	unsigned int entryCount;
+	unsigned long glyphIndexArray;
+} SKR_cmap_format6;
+
+typedef struct {
 	void const * data;
 	unsigned long length;
 
@@ -35,6 +41,7 @@ typedef struct {
 	short mappingFormat;
 	union {
 		SKR_cmap_format4 format4;
+		SKR_cmap_format6 format6;
 	} mapping;
 
 	short lineGap;
