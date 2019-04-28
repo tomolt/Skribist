@@ -1,13 +1,15 @@
 #!/bin/sh
 
+build_dir() {
+	pushd . > /dev/null
+	cd $1
+	./build.sh
+	popd > /dev/null
+}
+
 build_all() {
-	# examples
-	$CC $CFLAGS -g -O0 examples/bitmap.c -o examples/bitmap -Iinclude source/Skribist.c &
-	# stress tests
-	$CC $CFLAGS     -O3 stress/stress.c -o stress/stress.op -Iinclude source/Skribist.c &
-	$CC $CFLAGS -g  -O0 stress/stress.c -o stress/stress.dg -Iinclude source/Skribist.c &
-	$CC $CFLAGS -pg -O0 stress/stress.c -o stress/stress.pg -Iinclude source/Skribist.c &
-	wait
+	build_dir examples
+	build_dir stress
 }
 
 source ./environ.sh
