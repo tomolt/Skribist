@@ -70,28 +70,20 @@ static void fmt_le_dword(unsigned char *buf, uint32_t v)
 
 static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 {
-	int padPerLine = (4 - 3 * dim.width % 4) % 4;
-	assert((3 * dim.width + padPerLine) % 4 == 0);
 	unsigned char hdr[54] = { 0 };
 	// Header
 	hdr[0] = 'B';
 	hdr[1] = 'M';
-	fmt_le_dword(&hdr[2], 54 + (3 * dim.width + padPerLine) * dim.height); // size of file
+	fmt_le_dword(&hdr[2], 54 + (4 * dim.width) * dim.height); // size of file
 	hdr[10] = 54; // offset to image data
 	// InfoHeader
 	hdr[14] = 40; // size of InfoHeader
 	fmt_le_dword(&hdr[18], dim.width);
 	fmt_le_dword(&hdr[22], dim.height);
 	hdr[26] = 1; // color planes
-	hdr[28] = 24; // bpp
+	hdr[28] = 32; // bpp
 	fwrite(hdr, 1, 54, outFile);
-	for (long row = 0; row < dim.height; ++row) {
-		fwrite(image + 3 * dim.width * row, 3, dim.width, outFile);
-		// padding the scanline!
-		for (int p = 0; p < padPerLine; ++p) {
-			fputc(0, outFile);
-		}
-	}
+	fwrite(image, 4, dim.width * dim.height, outFile);
 }
 
 int main(int argc, char const *argv[])
@@ -150,6 +142,7 @@ int main(int argc, char const *argv[])
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
+	unsigned char * image = calloc(dims.width * dims.height, 4);
 
 	s = skrDrawOutline(&font, glyph, transform2, raster, dims);
 	if (s != SKR_SUCCESS) {
@@ -159,11 +152,13 @@ int main(int argc, char const *argv[])
 
 	skrTransposeRaster(raster, dims);
 	skrAccumulateRaster(raster, dims);
-	skrExportImage(raster, dims);
-
-	write_bmp((unsigned char *) raster, outFile, dims);
+	skrExportImage(raster, image, dims);
 
 	free(raster);
+
+	write_bmp(image, outFile, dims);
+
+	free(image);
 
 	fclose(outFile);
 

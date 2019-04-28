@@ -170,19 +170,12 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 }
 
 #if 0
-	SKR_BW_1_BIT,
-
 	SKR_ALPHA_8_UINT,
 	SKR_GRAY_8_SRGB,
 
 	SKR_ALPHA_16_UINT,
 	SKR_RGB_5_6_5_UINT,
 	SKR_BGR_5_6_5_UINT,
-
-	SKR_RGB_24_UINT,
-	SKR_RGB_24_SRGB,
-	SKR_BGR_24_UINT,
-	SKR_BGR_24_SRGB,
 
 	SKR_RGBA_32_UINT,
 	SKR_RGBA_32_SRGB,
@@ -191,22 +184,22 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 
 	SKR_RGB_48_UINT,
 	SKR_RGBA_64_UINT,
-	SKR_RGB_96_FLOAT,
 	SKR_RGBA_128_FLOAT
 #endif
 
-void skrExportImage(RasterCell * restrict raster, SKR_Dimensions dims)
+void skrExportImage(RasterCell * restrict raster,
+	unsigned char * restrict image, SKR_Dimensions dims)
 {
 	// NOTE this codepath assumes little-endianness
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
-	unsigned char * restrict image = (unsigned char *) raster;
 	for (long row = 0; row < dims.height; ++row) {
 		for (long col = 0; col < dims.width; ++col) {
 			int grayValue = raster[width * row + col];
 			grayValue = min(max(grayValue, 0), 255);
-			uint32_t pixelValue = grayValue | (grayValue << 8) | (grayValue << 16);
-			unsigned long imageIdx = 3 * (dims.width * row + col);
+			uint32_t pixelValue = grayValue | (grayValue << 8)
+				| (grayValue << 16) | (255 << 24);
+			unsigned long imageIdx = 4 * (dims.width * row + col);
 			*(uint32_t *) (image + imageIdx) = pixelValue;
 		}
 	}
