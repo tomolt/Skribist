@@ -35,6 +35,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <assert.h>
 
+static int code_from_utf8(char const * restrict str)
+{
+	int bytes = 0;
+	for (int c = str[0]; c & 0x80; c <<= 1) ++bytes;
+	if (bytes == 1 || bytes > 4) return '?';
+	int code = str[0] & (0x7F >> bytes);
+	for (int i = 1; i < bytes; ++i) {
+		if ((str[i] & 0xC0) != 0x80) return '?';
+		code = (code << 6) | (str[i] & 0x3F);
+	}
+	return code;
+}
+
 static int read_file(char const *filename, void **addr)
 {
 	FILE *file = fopen(filename, "rw");
@@ -93,7 +106,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int charCode = argv[1][0];
+	int charCode = code_from_utf8(argv[1]);
 
 	int ret;
 	SKR_Status s = SKR_SUCCESS;
