@@ -194,14 +194,18 @@ void skrExportImage(RasterCell * restrict raster,
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
 	uint32_t * restrict image32 = (uint32_t *) image;
+	__m128i const constMax = _mm_set1_epi32(0xFF);
+	__m128i const shuffleMask = _mm_set_epi8(
+			0xFF, 0x0C, 0x0C, 0x0C,
+			0xFF, 0x08, 0x08, 0x08,
+			0xFF, 0x04, 0x04, 0x04,
+			0xFF, 0x00, 0x00, 0x00);
 	for (long row = 0; row < dims.height; ++row) {
 		for (long col = 0; col < dims.width; col += 4) {
 			__m128i value = _mm_loadu_si128((__m128i const *) &raster[width * row + col]);
 			value = _mm_max_epi16(value, _mm_setzero_si128());
-			value = _mm_min_epi16(value, _mm_set1_epi16(0xFF));
-			__m128i lowerChannels = _mm_or_si128(value, _mm_slli_epi32(value, 8));
-			__m128i upperChannels = _mm_or_si128(_mm_slli_epi32(value, 16), _mm_set1_epi32(0xFF << 24));
-			__m128i pixel = _mm_or_si128(lowerChannels, upperChannels);
+			value = _mm_min_epi16(value, constMax);
+			__m128i pixel = _mm_shuffle_epi8(value, shuffleMask);
 			unsigned long imageIdx = dims.width * row + col;
 			int headroom = dims.width - col;
 			if (headroom >= 4) {
