@@ -331,13 +331,13 @@ SKR_Status skrGetHorMetrics(SKR_Font const * restrict font,
 	BYTES2 * restrict hmtxAddr = (BYTES2 *) ((BYTES1 *) font->data + font->hmtx.offset);
 	if (glyph < font->numberOfHMetrics) {
 		BYTES2 * restrict addr = &hmtxAddr[glyph * 2];
-		metrics->advanceWidth = ru16(addr[0]);
-		metrics->leftSideBearing = ri16(addr[1]);
+		metrics->advanceWidth = (float) ru16(addr[0]) / font->unitsPerEm;
+		metrics->leftSideBearing = (float) ri16(addr[1]) / font->unitsPerEm;
 		return SKR_SUCCESS;
 	} else {
 		BYTES2 * restrict addr = &hmtxAddr[(font->numberOfHMetrics - 1) * 2];
-		metrics->advanceWidth = ru16(addr[0]);
-		metrics->leftSideBearing = ri16((addr + 2)[glyph - font->numberOfHMetrics]);
+		metrics->advanceWidth = (float) ru16(addr[0]) / font->unitsPerEm;
+		metrics->leftSideBearing = (float) ri16((addr + 2)[glyph - font->numberOfHMetrics]) / font->unitsPerEm;
 		return SKR_SUCCESS;
 	}
 }

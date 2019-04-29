@@ -49,8 +49,8 @@ typedef struct {
 } SKR_Font;
 
 typedef struct {
-	unsigned short advanceWidth;
-	short leftSideBearing;
+	float advanceWidth;
+	float leftSideBearing;
 } SKR_HorMetrics;
 
 typedef struct {

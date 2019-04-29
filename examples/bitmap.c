@@ -198,9 +198,18 @@ int main(int argc, char const *argv[])
 		glyphs[i] = skrGlyphFromCode(&font, charCodes[i]);
 	}
 
+	float const size = 64.0f;
+
 	SKR_Assembly assembly[100];
+	float x = 0.0f;
 	for (int i = 0; i < count; ++i) {
-		assembly[i] = (SKR_Assembly) { glyphs[i], 64.0f, i * 32.0f, 0.0f };
+		SKR_HorMetrics metrics;
+		s = skrGetHorMetrics(&font, glyphs[i], &metrics);
+		if (s != SKR_SUCCESS) {
+			return EXIT_FAILURE;
+		}
+		assembly[i] = (SKR_Assembly) { glyphs[i], size, x, 0.0f };
+		x += metrics.advanceWidth * size;
 	}
 
 	SKR_Bounds bounds;
