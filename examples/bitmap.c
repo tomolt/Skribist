@@ -87,7 +87,7 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 	// Header
 	hdr[0] = 'B';
 	hdr[1] = 'M';
-	fmt_le_dword(&hdr[2], 54 + (4 * dim.width) * dim.height); // size of file
+	fmt_le_dword(&hdr[2], 54 + 4 * dim.width * dim.height); // size of file
 	hdr[10] = 54; // offset to image data
 	// InfoHeader
 	hdr[14] = 40; // size of InfoHeader
@@ -97,6 +97,58 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 	hdr[28] = 32; // bpp
 	fwrite(hdr, 1, 54, outFile);
 	fwrite(image, 4, dim.width * dim.height, outFile);
+}
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+typedef struct {
+	int glyph;
+	float size;
+	float x, y;
+} SKR_Assembly;
+
+static SKR_Status skrGetAssemblyBounds(SKR_Font * restrict font,
+	SKR_Assembly * restrict assembly, int count, SKR_Bounds * restrict bounds)
+{
+	if (count <= 0) return SKR_FAILURE;
+	SKR_Bounds total, next;
+	SKR_Transform transform = {
+		assembly[0].size, assembly[0].size, assembly[0].x, assembly[0].y };
+	SKR_Status s = skrGetOutlineBounds(font, assembly[0].glyph, transform, &total);
+	if (s) return s;
+	for (int i = 1; i < count; ++i) {
+		SKR_Transform transform = {
+			assembly[i].size, assembly[i].size, assembly[i].x, assembly[i].y };
+		s = skrGetOutlineBounds(font, assembly[i].glyph, transform, &next);
+		if (s) return s;
+		total.xMin = min(total.xMin, next.xMin);
+		total.yMin = min(total.yMin, next.yMin);
+		total.xMax = max(total.xMax, next.xMax);
+		total.yMax = max(total.yMax, next.yMax);
+	}
+	*bounds = total;
+	return SKR_SUCCESS;
+}
+
+static SKR_Status skrDrawAssembly(SKR_Font * restrict font,
+	SKR_Assembly * restrict assembly, int count,
+	RasterCell * restrict raster, SKR_Bounds bounds)
+{
+	SKR_Dimensions dims = { bounds.xMax - bounds.xMin, bounds.yMax - bounds.yMin };
+	for (int i = 0; i < count; ++i) {
+		SKR_Assembly amb = assembly[i];
+		SKR_Transform transform = { amb.size, amb.size,
+			amb.x - bounds.xMin, amb.y - bounds.yMin };
+		SKR_Status s = skrDrawOutline(font, amb.glyph, transform, raster, dims);
+		if (s) return s;
+	}
+	return SKR_SUCCESS;
 }
 
 int main(int argc, char const *argv[])
@@ -137,17 +189,14 @@ int main(int argc, char const *argv[])
 
 	Glyph glyph = skrGlyphFromCode(&font, charCode);
 
-	SKR_Transform transform1 = { 64.0, 64.0, 0.0, 0.0 };
+	SKR_Assembly assembly[1];
+	assembly[0] = (SKR_Assembly) { glyph, 64.0f, 0.0f, 0.0f };
 
 	SKR_Bounds bounds;
-	s = skrGetOutlineBounds(&font, glyph, transform1, &bounds);
+	s = skrGetAssemblyBounds(&font, assembly, 1, &bounds);
 	if (s != SKR_SUCCESS) {
 		return EXIT_FAILURE;
 	}
-
-	SKR_Transform transform2 = transform1;
-	transform2.xMove -= bounds.xMin;
-	transform2.yMove -= bounds.yMin;
 
 	SKR_Dimensions dims = {
 		.width  = bounds.xMax - bounds.xMin,
@@ -157,7 +206,7 @@ int main(int argc, char const *argv[])
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, 4);
 
-	s = skrDrawOutline(&font, glyph, transform2, raster, dims);
+	s = skrDrawAssembly(&font, assembly, 1, raster, bounds);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "This type of outline is not implemented yet.\n");
 		return EXIT_FAILURE;
