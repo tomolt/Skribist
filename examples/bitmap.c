@@ -35,15 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <assert.h>
 
-static int code_from_utf8(char const * restrict str)
+static int code_from_utf8(char const ** restrict ptr)
 {
 	int bytes = 0;
-	for (int c = str[0]; c & 0x80; c <<= 1) ++bytes;
+	for (int c = **ptr; c & 0x80; c <<= 1) ++bytes;
 	if (bytes == 1 || bytes > 4) return '?';
-	int code = str[0] & (0x7F >> bytes);
-	for (int i = 1; i < bytes; ++i) {
-		if ((str[i] & 0xC0) != 0x80) return '?';
-		code = (code << 6) | (str[i] & 0x3F);
+	int code = *(*ptr)++ & (0x7F >> bytes);
+	for (int i = 1; i < bytes; ++i, ++*ptr) {
+		if ((**ptr & 0xC0) != 0x80) return '?';
+		code = (code << 6) | (**ptr & 0x3F);
 	}
 	return code;
 }
@@ -158,7 +158,13 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int charCode = code_from_utf8(argv[1]);
+	int count = 0;
+	int charCodes[100];
+	char const * ptr = argv[1];
+	while (*ptr != '\0') {
+		// TODO watch for buffer overflows
+		charCodes[count++] = code_from_utf8(&ptr);
+	}
 
 	int ret;
 	SKR_Status s = SKR_SUCCESS;
@@ -187,16 +193,18 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Glyph glyphs[2];
-	glyphs[0] = skrGlyphFromCode(&font, charCode);
-	glyphs[1] = skrGlyphFromCode(&font, '!');
+	Glyph glyphs[100];
+	for (int i = 0; i < count; ++i) {
+		glyphs[i] = skrGlyphFromCode(&font, charCodes[i]);
+	}
 
-	SKR_Assembly assembly[2];
-	assembly[0] = (SKR_Assembly) { glyphs[0], 64.0f, 0.0f, 0.0f };
-	assembly[1] = (SKR_Assembly) { glyphs[1], 64.0f, 64.0f, 0.0f };
+	SKR_Assembly assembly[100];
+	for (int i = 0; i < count; ++i) {
+		assembly[i] = (SKR_Assembly) { glyphs[i], 64.0f, i * 32.0f, 0.0f };
+	}
 
 	SKR_Bounds bounds;
-	s = skrGetAssemblyBounds(&font, assembly, 2, &bounds);
+	s = skrGetAssemblyBounds(&font, assembly, count, &bounds);
 	if (s != SKR_SUCCESS) {
 		return EXIT_FAILURE;
 	}
@@ -209,7 +217,7 @@ int main(int argc, char const *argv[])
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, 4);
 
-	s = skrDrawAssembly(&font, assembly, 2, raster, bounds);
+	s = skrDrawAssembly(&font, assembly, count, raster, bounds);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "This type of outline is not implemented yet.\n");
 		return EXIT_FAILURE;
