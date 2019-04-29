@@ -187,13 +187,16 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Glyph glyph = skrGlyphFromCode(&font, charCode);
+	Glyph glyphs[2];
+	glyphs[0] = skrGlyphFromCode(&font, charCode);
+	glyphs[1] = skrGlyphFromCode(&font, '!');
 
-	SKR_Assembly assembly[1];
-	assembly[0] = (SKR_Assembly) { glyph, 64.0f, 0.0f, 0.0f };
+	SKR_Assembly assembly[2];
+	assembly[0] = (SKR_Assembly) { glyphs[0], 64.0f, 0.0f, 0.0f };
+	assembly[1] = (SKR_Assembly) { glyphs[1], 64.0f, 64.0f, 0.0f };
 
 	SKR_Bounds bounds;
-	s = skrGetAssemblyBounds(&font, assembly, 1, &bounds);
+	s = skrGetAssemblyBounds(&font, assembly, 2, &bounds);
 	if (s != SKR_SUCCESS) {
 		return EXIT_FAILURE;
 	}
@@ -206,7 +209,7 @@ int main(int argc, char const *argv[])
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, 4);
 
-	s = skrDrawAssembly(&font, assembly, 1, raster, bounds);
+	s = skrDrawAssembly(&font, assembly, 2, raster, bounds);
 	if (s != SKR_SUCCESS) {
 		fprintf(stderr, "This type of outline is not implemented yet.\n");
 		return EXIT_FAILURE;
