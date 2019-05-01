@@ -49,6 +49,12 @@ typedef struct {
 } SKR_Font;
 
 typedef struct {
+	int glyph;
+	float size;
+	float x, y;
+} SKR_Assembly;
+
+typedef struct {
 	float advanceWidth;
 	float leftSideBearing;
 } SKR_HorMetrics;
@@ -72,6 +78,15 @@ typedef uint32_t RasterCell;
 
 void skrInitializeLibrary(void);
 SKR_Status skrInitializeFont(SKR_Font * restrict font);
+
+SKR_Status skrAssembleStringUTF8(SKR_Font * restrict font,
+	char const * restrict line, float size,
+	SKR_Assembly * restrict assembly, int * restrict count);
+SKR_Status skrGetAssemblyBounds(SKR_Font * restrict font,
+	SKR_Assembly * restrict assembly, int count, SKR_Bounds * restrict bounds);
+SKR_Status skrDrawAssembly(SKR_Font * restrict font,
+	SKR_Assembly * restrict assembly, int count,
+	uint32_t * restrict raster, SKR_Bounds bounds);
 
 Glyph skrGlyphFromCode(SKR_Font const * restrict font, int charCode);
 

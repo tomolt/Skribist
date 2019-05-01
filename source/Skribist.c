@@ -23,6 +23,11 @@ C standard headers - we can use these even if we don't link with the standard li
 #define SKR_assert(stmt) do {} while (0)
 #endif
 
+/*
+So as it turns out, these three naive macros are actually
+faster than any bit-tricks or specialized functions on amd64.
+*/
+
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -71,3 +76,4 @@ static Point Midpoint(Point a, Point b)
 #include "Rasterizing.c"
 #include "Tesselating.c"
 #include "LoadingTTF.c"
+#include "Assembly.c"
