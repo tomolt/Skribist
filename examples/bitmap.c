@@ -35,19 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <assert.h>
 
-static int code_from_utf8(char const ** restrict ptr)
-{
-	int bytes = 0;
-	for (int c = **ptr; c & 0x80; c <<= 1) ++bytes;
-	if (bytes == 1 || bytes > 4) return '?';
-	int code = *(*ptr)++ & (0x7F >> bytes);
-	for (int i = 1; i < bytes; ++i, ++*ptr) {
-		if ((**ptr & 0xC0) != 0x80) return '?';
-		code = (code << 6) | (**ptr & 0x3F);
-	}
-	return code;
-}
-
 static int read_file(char const *filename, void **addr)
 {
 	FILE *file = fopen(filename, "rw");
@@ -113,6 +100,19 @@ typedef struct {
 	float x, y;
 } SKR_Assembly;
 
+static int GetCharCodeFromUTF8(char const * restrict * restrict ptr)
+{
+	int bytes = 0;
+	for (int c = **ptr; c & 0x80; c <<= 1) ++bytes;
+	if (bytes == 1 || bytes > 4) return '?';
+	int code = *(*ptr)++ & (0x7F >> bytes);
+	for (int i = 1; i < bytes; ++i, ++*ptr) {
+		if ((**ptr & 0xC0) != 0x80) return '?';
+		code = (code << 6) | (**ptr & 0x3F);
+	}
+	return code;
+}
+
 static SKR_Status skrGetAssemblyBounds(SKR_Font * restrict font,
 	SKR_Assembly * restrict assembly, int count, SKR_Bounds * restrict bounds)
 {
@@ -158,14 +158,6 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int count = 0;
-	int charCodes[100];
-	char const * ptr = argv[1];
-	while (*ptr != '\0') {
-		// TODO watch for buffer overflows
-		charCodes[count++] = code_from_utf8(&ptr);
-	}
-
 	int ret;
 	SKR_Status s = SKR_SUCCESS;
 
@@ -193,22 +185,22 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	Glyph glyphs[100];
-	for (int i = 0; i < count; ++i) {
-		glyphs[i] = skrGlyphFromCode(&font, charCodes[i]);
-	}
-
 	float const size = 64.0f;
 
+	char const * restrict line = argv[1];
+	// TODO watch for buffer overflows
+	int count = 0;
 	SKR_Assembly assembly[100];
 	float x = 0.0f;
-	for (int i = 0; i < count; ++i) {
+	while (*line != '\0') {
+		int charCode = GetCharCodeFromUTF8(&line);
+		Glyph glyph = skrGlyphFromCode(&font, charCode);
 		SKR_HorMetrics metrics;
-		s = skrGetHorMetrics(&font, glyphs[i], &metrics);
+		s = skrGetHorMetrics(&font, glyph, &metrics);
 		if (s != SKR_SUCCESS) {
 			return EXIT_FAILURE;
 		}
-		assembly[i] = (SKR_Assembly) { glyphs[i], size, x, 0.0f };
+		assembly[count++] = (SKR_Assembly) { glyph, size, x, 0.0f };
 		x += metrics.advanceWidth * size;
 	}
 
