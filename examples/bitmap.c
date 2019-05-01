@@ -113,6 +113,25 @@ static int GetCharCodeFromUTF8(char const * restrict * restrict ptr)
 	return code;
 }
 
+SKR_Status skrAssembleStringUTF8(SKR_Font * restrict font,
+	char const * restrict line, float size,
+	SKR_Assembly * restrict assembly, int * restrict count)
+{
+	// TODO watch for buffer overflows
+	*count = 0;
+	float x = 0.0f;
+	while (*line != '\0') {
+		int charCode = GetCharCodeFromUTF8(&line);
+		Glyph glyph = skrGlyphFromCode(font, charCode);
+		SKR_HorMetrics metrics;
+		SKR_Status s = skrGetHorMetrics(font, glyph, &metrics);
+		if (s) return s;
+		assembly[(*count)++] = (SKR_Assembly) { glyph, size, x, 0.0f };
+		x += metrics.advanceWidth * size;
+	}
+	return SKR_SUCCESS;
+}
+
 static SKR_Status skrGetAssemblyBounds(SKR_Font * restrict font,
 	SKR_Assembly * restrict assembly, int count, SKR_Bounds * restrict bounds)
 {
@@ -187,22 +206,9 @@ int main(int argc, char const *argv[])
 
 	float const size = 64.0f;
 
-	char const * restrict line = argv[1];
-	// TODO watch for buffer overflows
-	int count = 0;
+	int count;
 	SKR_Assembly assembly[100];
-	float x = 0.0f;
-	while (*line != '\0') {
-		int charCode = GetCharCodeFromUTF8(&line);
-		Glyph glyph = skrGlyphFromCode(&font, charCode);
-		SKR_HorMetrics metrics;
-		s = skrGetHorMetrics(&font, glyph, &metrics);
-		if (s != SKR_SUCCESS) {
-			return EXIT_FAILURE;
-		}
-		assembly[count++] = (SKR_Assembly) { glyph, size, x, 0.0f };
-		x += metrics.advanceWidth * size;
-	}
+	s = skrAssembleStringUTF8(&font, argv[1], size, assembly, &count);
 
 	SKR_Bounds bounds;
 	s = skrGetAssemblyBounds(&font, assembly, count, &bounds);
