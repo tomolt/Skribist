@@ -126,9 +126,8 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims)
 	return CalcRasterWidth(dims) * dims.height;
 }
 
-void skrTransposeRaster(RasterCell * restrict raster, SKR_Dimensions dims)
+void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 {
-	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
 	__m128i const edgeMask = _mm_set1_epi32(0xFFFF);
 	RasterCell * const rasterEnd = raster + width * dims.height;
@@ -148,12 +147,6 @@ void skrTransposeRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 			*upper = _mm_packus_epi32(lowerTails, upperTails);
 		}
 	}
-}
-
-void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
-{
-	// TODO read from workspace instead
-	long const width = CalcRasterWidth(dims);
 	for (long col = 0; col < width; col += 8) {
 		uint32_t * cursor = raster + col;
 		__m128i accumulator = _mm_setzero_si128();
@@ -182,7 +175,6 @@ void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 	SKR_BGRA_32_UINT,
 	SKR_BGRA_32_SRGB,
 
-	SKR_RGB_48_UINT,
 	SKR_RGBA_64_UINT,
 	SKR_RGBA_128_FLOAT
 #endif
