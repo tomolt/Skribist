@@ -130,30 +130,27 @@ void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	long const width = CalcRasterWidth(dims);
 	__m128i const edgeMask = _mm_set1_epi32(0xFFFF);
-	RasterCell * const rasterEnd = raster + width * dims.height;
 
-	for (RasterCell * row = raster; row < rasterEnd; row += width) {
-		for (RasterCell * col = row; col < row + width; col += 8) {
-			__m128i * restrict lower = (__m128i *) col;
-			__m128i * restrict upper = (__m128i *) col + 1;
-
-			__m128i lowerEdges = _mm_and_si128(*lower, edgeMask);
-			__m128i upperEdges = _mm_and_si128(*upper, edgeMask);
-
-			__m128i lowerTails = _mm_srli_epi32(*lower, 16);
-			__m128i upperTails = _mm_srli_epi32(*upper, 16);
-
-			*lower = _mm_packus_epi32(lowerEdges, upperEdges);
-			*upper = _mm_packus_epi32(lowerTails, upperTails);
-		}
-	}
 	for (long col = 0; col < width; col += 8) {
 		uint32_t * cursor = raster + col;
 		__m128i accumulator = _mm_setzero_si128();
 		for (long i = 0; i < dims.height; ++i, cursor += width) {
 			__m128i * restrict pointer = (__m128i *) cursor;
-			__m128i cellValue = _mm_adds_epi16(accumulator, *pointer);
-			accumulator = _mm_adds_epi16(accumulator, *(pointer + 1));
+
+			__m128i lower = _mm_loadu_si128(pointer);
+			__m128i upper = _mm_loadu_si128(pointer + 1);
+
+			__m128i lowerEdge = _mm_and_si128(lower, edgeMask);
+			__m128i upperEdge = _mm_and_si128(upper, edgeMask);
+
+			__m128i lowerTail = _mm_srli_epi32(lower, 16);
+			__m128i upperTail = _mm_srli_epi32(upper, 16);
+
+			__m128i edgeValue = _mm_packus_epi32(lowerEdge, upperEdge);
+			__m128i tailValue = _mm_packus_epi32(lowerTail, upperTail);
+
+			__m128i cellValue = _mm_adds_epi16(accumulator, edgeValue);
+			accumulator = _mm_adds_epi16(accumulator, tailValue);
 			cellValue = _mm_max_epi16(cellValue, _mm_setzero_si128());
 			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
 			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
