@@ -126,10 +126,24 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims)
 	return CalcRasterWidth(dims) * dims.height;
 }
 
+static __m128i GatherEdge(__m128i * restrict pointer)
+{
+	__m128i const edgeMask = _mm_set1_epi32(0xFFFF);
+	__m128i lowerEdge = _mm_and_si128(pointer[0], edgeMask);
+	__m128i upperEdge = _mm_and_si128(pointer[1], edgeMask);
+	return _mm_packus_epi32(lowerEdge, upperEdge);
+}
+
+static __m128i GatherTail(__m128i * restrict pointer)
+{
+	__m128i lowerTail = _mm_srli_epi32(pointer[0], 16);
+	__m128i upperTail = _mm_srli_epi32(pointer[1], 16);
+	return _mm_packus_epi32(lowerTail, upperTail);
+}
+
 void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	long const width = CalcRasterWidth(dims);
-	__m128i const edgeMask = _mm_set1_epi32(0xFFFF);
 
 	for (long col = 0; col < width; col += 8) {
 		uint32_t * cursor = raster + col;
@@ -137,21 +151,13 @@ void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 		for (long i = 0; i < dims.height; ++i, cursor += width) {
 			__m128i * restrict pointer = (__m128i *) cursor;
 
-			__m128i lower = _mm_loadu_si128(pointer);
-			__m128i upper = _mm_loadu_si128(pointer + 1);
-
-			__m128i lowerEdge = _mm_and_si128(lower, edgeMask);
-			__m128i upperEdge = _mm_and_si128(upper, edgeMask);
-
-			__m128i lowerTail = _mm_srli_epi32(lower, 16);
-			__m128i upperTail = _mm_srli_epi32(upper, 16);
-
-			__m128i edgeValue = _mm_packus_epi32(lowerEdge, upperEdge);
-			__m128i tailValue = _mm_packus_epi32(lowerTail, upperTail);
+			__m128i edgeValue = GatherEdge(pointer);
+			__m128i tailValue = GatherTail(pointer);
 
 			__m128i cellValue = _mm_adds_epi16(accumulator, edgeValue);
 			accumulator = _mm_adds_epi16(accumulator, tailValue);
 			cellValue = _mm_max_epi16(cellValue, _mm_setzero_si128());
+
 			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
 			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
 		}
@@ -161,20 +167,47 @@ void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 
 #if 0
 	SKR_ALPHA_8_UINT,
-	SKR_GRAY_8_SRGB,
-
 	SKR_ALPHA_16_UINT,
 	SKR_RGB_5_6_5_UINT,
-	SKR_BGR_5_6_5_UINT,
-
 	SKR_RGBA_32_UINT,
-	SKR_RGBA_32_SRGB,
-	SKR_BGRA_32_UINT,
-	SKR_BGRA_32_SRGB,
-
 	SKR_RGBA_64_UINT,
-	SKR_RGBA_128_FLOAT
+	SKR_GRAY_8_SRGB,
+	SKR_RGBA_32_SRGB,
 #endif
+
+static __m128i BoundPixelValues(__m128i value)
+{
+	__m128i const constMax = _mm_set1_epi32(0xFF);
+	return _mm_min_epi16(value, constMax);
+}
+
+static __m128i ConvertPixels(__m128i value)
+{
+	__m128i const shuffleMask = _mm_set_epi8(
+		0xFF, 0x0C, 0x0C, 0x0C,
+		0xFF, 0x08, 0x08, 0x08,
+		0xFF, 0x04, 0x04, 0x04,
+		0xFF, 0x00, 0x00, 0x00);
+	return _mm_shuffle_epi8(value, shuffleMask);
+}
+
+static void WritePixels(unsigned char * restrict image, SKR_Dimensions dims,
+	__m128i pixel, unsigned long row, unsigned long col)
+{
+	SKR_assert(col < dims.width && row < dims.height);
+	uint32_t * restrict image32 = (uint32_t *) image;
+	unsigned long idx = dims.width * row + col;
+	int headroom = dims.width - col;
+	if (headroom >= 4) {
+		_mm_storeu_si128((__m128i *) &image32[idx], pixel);
+	} else {
+		uint32_t pixelS[4];
+		_mm_storeu_si128((__m128i *) pixelS, pixel);
+		for (int i = 0; i < headroom; ++i) {
+			image32[idx + i] = pixelS[i];
+		}
+	}
+}
 
 void skrExportImage(RasterCell * restrict raster,
 	unsigned char * restrict image, SKR_Dimensions dims)
@@ -182,30 +215,12 @@ void skrExportImage(RasterCell * restrict raster,
 	// NOTE this codepath assumes little-endianness
 	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
-	uint32_t * restrict image32 = (uint32_t *) image;
-	__m128i const constMax = _mm_set1_epi32(0xFF);
-	__m128i const shuffleMask = _mm_set_epi8(
-			0xFF, 0x0C, 0x0C, 0x0C,
-			0xFF, 0x08, 0x08, 0x08,
-			0xFF, 0x04, 0x04, 0x04,
-			0xFF, 0x00, 0x00, 0x00);
 	for (long row = 0; row < dims.height; ++row) {
 		for (long col = 0; col < dims.width; col += 4) {
 			__m128i value = _mm_loadu_si128((__m128i const *) &raster[width * row + col]);
-			value = _mm_max_epi16(value, _mm_setzero_si128());
-			value = _mm_min_epi16(value, constMax);
-			__m128i pixel = _mm_shuffle_epi8(value, shuffleMask);
-			unsigned long imageIdx = dims.width * row + col;
-			int headroom = dims.width - col;
-			if (headroom >= 4) {
-				_mm_storeu_si128((__m128i *) &image32[imageIdx], pixel);
-			} else {
-				uint32_t pixelS[4];
-				_mm_storeu_si128((__m128i *) pixelS, pixel);
-				for (int i = 0; i < headroom; ++i) {
-					image32[imageIdx + i] = pixelS[i];
-				}
-			}
+			value = BoundPixelValues(value);
+			__m128i pixel = ConvertPixels(value);
+			WritePixels(image, dims, pixel, row, col);
 		}
 	}
 }
