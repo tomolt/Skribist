@@ -180,11 +180,16 @@ static void WritePixels(unsigned char * restrict image, SKR_Dimensions dims,
 	uint32_t * restrict image32 = (uint32_t *) image;
 	unsigned long idx = dims.width * row + col;
 	int headroom = dims.width - col;
-	if (headroom > 8) {
+	if (headroom >= 8) {
 		_mm_storeu_si128((__m128i *) (image32 + idx), pixels[0]);
 		_mm_storeu_si128((__m128i *) (image32 + idx + 4), pixels[1]);
 	} else {
-		memcpy(image32 + idx, pixels, 4 * headroom);
+		uint32_t data[8];
+		_mm_storeu_si128((__m128i *) &data[0], pixels[0]);
+		_mm_storeu_si128((__m128i *) &data[4], pixels[1]);
+		for (int i = 0; i < headroom; ++i) {
+			image32[idx + i] = data[i];
+		}
 	}
 }
 
