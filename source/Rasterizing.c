@@ -143,26 +143,6 @@ static __m128i GatherTail(__m128i * restrict pointer)
 
 void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 {
-	long const width = CalcRasterWidth(dims);
-
-	for (long col = 0; col < width; col += 8) {
-		uint32_t * cursor = raster + col;
-		__m128i accumulator = _mm_setzero_si128();
-		for (long i = 0; i < dims.height; ++i, cursor += width) {
-			__m128i * restrict pointer = (__m128i *) cursor;
-
-			__m128i edgeValue = GatherEdge(pointer);
-			__m128i tailValue = GatherTail(pointer);
-
-			__m128i cellValue = _mm_adds_epi16(accumulator, edgeValue);
-			accumulator = _mm_adds_epi16(accumulator, tailValue);
-			cellValue = _mm_max_epi16(cellValue, _mm_setzero_si128());
-
-			_mm_storeu_si128(pointer, _mm_unpacklo_epi16(cellValue, _mm_setzero_si128()));
-			_mm_storeu_si128(pointer + 1, _mm_unpackhi_epi16(cellValue, _mm_setzero_si128()));
-		}
-		SKR_assert(_mm_movemask_epi8(_mm_cmpeq_epi8(accumulator, _mm_setzero_si128())) == 0xFFFF);
-	}
 }
 
 #if 0
@@ -177,51 +157,64 @@ void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
 
 static __m128i BoundPixelValues(__m128i value)
 {
-	__m128i const constMax = _mm_set1_epi32(0xFF);
+	__m128i const constMax = _mm_set1_epi16(0xFF);
 	return _mm_min_epi16(value, constMax);
 }
 
-static __m128i ConvertPixels(__m128i value)
+static void ConvertPixels(__m128i value, __m128i * restrict pixels)
 {
-	__m128i const shuffleMask = _mm_set_epi8(
-		0xFF, 0x0C, 0x0C, 0x0C,
-		0xFF, 0x08, 0x08, 0x08,
+	__m128i const lowerMask = _mm_set_epi8(
+		0xFF, 0x06, 0x06, 0x06,
 		0xFF, 0x04, 0x04, 0x04,
+		0xFF, 0x02, 0x02, 0x02,
 		0xFF, 0x00, 0x00, 0x00);
-	return _mm_shuffle_epi8(value, shuffleMask);
+	__m128i const upperMask = _mm_set_epi8(
+		0xFF, 0x0E, 0x0E, 0x0E,
+		0xFF, 0x0C, 0x0C, 0x0C,
+		0xFF, 0x0A, 0x0A, 0x0A,
+		0xFF, 0x08, 0x08, 0x08);
+	pixels[0] = _mm_shuffle_epi8(value, lowerMask);
+	pixels[1] = _mm_shuffle_epi8(value, upperMask);
 }
 
 static void WritePixels(unsigned char * restrict image, SKR_Dimensions dims,
-	__m128i pixel, unsigned long row, unsigned long col)
+	__m128i * restrict pixels, unsigned long row, unsigned long col)
 {
 	SKR_assert(col < dims.width && row < dims.height);
 	uint32_t * restrict image32 = (uint32_t *) image;
 	unsigned long idx = dims.width * row + col;
 	int headroom = dims.width - col;
-	if (headroom >= 4) {
-		_mm_storeu_si128((__m128i *) &image32[idx], pixel);
+	if (headroom > 8) {
+		_mm_storeu_si128((__m128i *) (image32 + idx), pixels[0]);
+		_mm_storeu_si128((__m128i *) (image32 + idx + 4), pixels[1]);
 	} else {
-		uint32_t pixelS[4];
-		_mm_storeu_si128((__m128i *) pixelS, pixel);
-		for (int i = 0; i < headroom; ++i) {
-			image32[idx + i] = pixelS[i];
-		}
+		memcpy(image32 + idx, pixels, 4 * headroom);
 	}
 }
 
 void skrExportImage(RasterCell * restrict raster,
 	unsigned char * restrict image, SKR_Dimensions dims)
 {
-	// NOTE this codepath assumes little-endianness
-	// TODO read from workspace instead
 	long const width = CalcRasterWidth(dims);
-	for (long row = 0; row < dims.height; ++row) {
-		for (long col = 0; col < dims.width; col += 4) {
-			__m128i value = _mm_loadu_si128((__m128i const *) &raster[width * row + col]);
-			value = BoundPixelValues(value);
-			__m128i pixel = ConvertPixels(value);
-			WritePixels(image, dims, pixel, row, col);
+	for (long col = 0; col < width; col += 8) {
+		uint32_t * cursor = raster + col;
+		__m128i accumulator = _mm_setzero_si128();
+		for (long row = 0; row < dims.height; ++row, cursor += width) {
+			__m128i * restrict pointer = (__m128i *) cursor;
+
+			__m128i edgeValue = GatherEdge(pointer);
+			__m128i tailValue = GatherTail(pointer);
+
+			__m128i cellValue = _mm_adds_epi16(accumulator, edgeValue);
+			accumulator = _mm_adds_epi16(accumulator, tailValue);
+			cellValue = _mm_max_epi16(cellValue, _mm_setzero_si128());
+
+			cellValue = BoundPixelValues(cellValue);
+			__m128i pixels[2];
+			ConvertPixels(cellValue, pixels);
+			WritePixels(image, dims, pixels, row, col);
 		}
+		SKR_assert(_mm_movemask_epi8(_mm_cmpeq_epi8(accumulator, _mm_setzero_si128())) == 0xFFFF);
 	}
 }
 
