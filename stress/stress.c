@@ -7,6 +7,15 @@
 #include <math.h>
 #include <time.h>
 
+// TODO platform-independent "deterministic" prng
+
+char const * WordList[] = {
+	"lorem", "ipsum", "dolor", "sit", "amet,",
+	"consectetur", "adipisci elit,"
+};
+
+int const WordCount = sizeof(WordList) / sizeof(*WordList);
+
 static double time_in_seconds(struct timespec * ts)
 {
     return (double) ts->tv_sec + (double) ts->tv_nsec / 1000000000.0;
@@ -37,16 +46,17 @@ static int read_file(char const *filename, void **addr)
 	return 0;
 }
 
-static long long OutlineCounter;
-
-static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform transform1)
+static SKR_Status draw_word(SKR_Font * font, float size, char const * word)
 {
-	SKR_Bounds bounds;
-	skrGetOutlineBounds(font, glyph, transform1, &bounds);
+	SKR_Status s;
 
-	SKR_Transform transform2 = transform1;
-	transform2.xMove -= bounds.xMin;
-	transform2.yMove -= bounds.yMin;
+	int count;
+	SKR_Assembly assembly[100];
+	s = skrAssembleStringUTF8(font, word, size, assembly, &count);
+
+	SKR_Bounds bounds;
+	s = skrGetAssemblyBounds(font, assembly, count, &bounds);
+	if (s) return s;
 
 	SKR_Dimensions dims = {
 		.width  = bounds.xMax - bounds.xMin,
@@ -56,15 +66,15 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform trans
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
 	unsigned char * image = calloc(dims.width * dims.height, 4);
 
-	SKR_Status s = skrDrawOutline(font, glyph, transform2, raster, dims);
+	s = skrDrawAssembly(font, assembly, count, raster, bounds);
+	if (s) return s;
 
-	if (!s) {
-		++OutlineCounter;
-		skrExportImage(raster, image, dims);
-	}
+	skrExportImage(raster, image, dims);
 
 	free(raster);
 	free(image);
+
+	return SKR_SUCCESS;
 }
 
 int main(int argc, char const *argv[])
@@ -105,25 +115,22 @@ int main(int argc, char const *argv[])
 	struct timespec startTime, nowTime;
 	clock_gettime(CLOCK_MONOTONIC_RAW, &startTime); // TODO error handling
 	double elapsedTime; // in seconds
+	unsigned long long iterations = 0;
 
-	for (;;) {
-		for (int charCode = 0; charCode < 500; ++charCode) {
-			for (double size = 10.0; size <= 60.0; size += 2.0) {
-				Glyph glyph = skrGlyphFromCode(&font, charCode);
-				SKR_Transform transform = { size, size, 0.0, 0.0 };
-				draw_outline(&font, glyph, transform);
+	do {
+		int size = 10 + (rand() % 50);
+		char const * word = WordList[rand() % WordCount];
 
-				clock_gettime(CLOCK_MONOTONIC_RAW, &nowTime); // TODO error handling
-				elapsedTime = time_in_seconds(&nowTime) - time_in_seconds(&startTime);
-				if (elapsedTime >= seconds) goto end_test;
-			}
-		}
-	}
-end_test:
+		s = draw_word(&font, size, word);
+		if (!s) ++iterations;
+
+		clock_gettime(CLOCK_MONOTONIC_RAW, &nowTime); // TODO error handling
+		elapsedTime = time_in_seconds(&nowTime) - time_in_seconds(&startTime);
+	} while (elapsedTime < seconds);
 
 	printf("SUMMARY:\n");
-	printf("Drew %lld outlines in %f seconds,\n", OutlineCounter, elapsedTime);
-	printf("Resulting in an average speed of %f kHz.\n", OutlineCounter / (elapsedTime * 1000.0));
+	printf("Ran %lld iterations in %f seconds,\n", iterations, elapsedTime);
+	printf("Resulting in an average speed of %f kHz.\n", iterations / (elapsedTime * 1000.0));
 
 	free(rawData);
 
