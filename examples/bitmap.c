@@ -146,7 +146,6 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	skrProcessRaster(raster, dims);
 	skrExportImage(raster, image, dims);
 
 	free(raster);

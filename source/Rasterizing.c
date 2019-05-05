@@ -141,10 +141,6 @@ static __m128i GatherTail(__m128i * restrict pointer)
 	return _mm_packus_epi32(lowerTail, upperTail);
 }
 
-void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims)
-{
-}
-
 #if 0
 	SKR_ALPHA_8_UINT,
 	SKR_ALPHA_16_UINT,

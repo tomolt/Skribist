@@ -60,7 +60,6 @@ static void draw_outline(SKR_Font const * font, Glyph glyph, SKR_Transform trans
 
 	if (!s) {
 		++OutlineCounter;
-		skrProcessRaster(raster, dims);
 		skrExportImage(raster, image, dims);
 	}
 

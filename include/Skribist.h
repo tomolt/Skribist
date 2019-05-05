@@ -99,8 +99,6 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims);
 
 unsigned long skrCalcCellCount(SKR_Dimensions dims);
-void skrProcessRaster(RasterCell * restrict raster, SKR_Dimensions dims);
-void skrAccumulateRaster(RasterCell * restrict raster, SKR_Dimensions dims);
 void skrExportImage(RasterCell * restrict raster,
 	unsigned char * restrict image, SKR_Dimensions dims);
 
