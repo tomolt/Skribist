@@ -89,7 +89,8 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 
 static void DrawLine(Workspace * restrict ws, Line line)
 {
-	if (gabs(line.end.x - line.beg.x) >= 1.0f / GRAIN) {
+	float diff = line.end.x - line.beg.x;
+	if (diff <= -1.0f / GRAIN || 1.0f / GRAIN <= diff) {
 		RasterizeLine(ws, line);
 	}
 }
