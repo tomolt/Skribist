@@ -64,7 +64,7 @@ static SKR_Status draw_word(SKR_Font * font, float size, char const * word)
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
-	unsigned char * image = calloc(dims.width * dims.height, 4);
+	unsigned char * image = malloc(4 * dims.width * dims.height);
 
 	s = skrDrawAssembly(font, assembly, count, raster, bounds);
 	if (s) return s;

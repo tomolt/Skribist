@@ -138,7 +138,7 @@ int main(int argc, char const *argv[])
 
 	unsigned long cellCount = skrCalcCellCount(dims);
 	RasterCell * raster = calloc(cellCount, sizeof(RasterCell));
-	unsigned char * image = calloc(dims.width * dims.height, 4);
+	unsigned char * image = malloc(4 * dims.width * dims.height);
 
 	s = skrDrawAssembly(&font, assembly, count, raster, bounds);
 	if (s != SKR_SUCCESS) {
