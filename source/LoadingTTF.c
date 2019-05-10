@@ -494,6 +494,7 @@ static SKR_Status GetOutlineRange(SKR_Font const * restrict font,
 SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, SKR_Bounds * restrict bounds)
 {
+	/* TODO return empty bounds in case glyf length is zero */
 	SKR_Status s;
 	MemRange range;
 	s = GetOutlineRange(font, glyph, &range);
@@ -683,6 +684,7 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	MemRange range;
 	s = GetOutlineRange(font, glyph, &range);
 	if (s) return s;
+	if (range.upperBound == range.lowerBound) return SKR_SUCCESS;
 	OutlineIntel intel = { 0 };
 	s = ScoutOutline(range.lowerBound, &intel);
 	if (s) return s;
