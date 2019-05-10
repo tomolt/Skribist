@@ -38,6 +38,9 @@ faster than any bit-tricks or specialized functions on amd64.
 
 #define gabs(x) ((x) >= 0 ? (x) : -(x))
 
+#define GRAIN_BITS 8
+#define GRAIN (1 << GRAIN_BITS)
+
 typedef struct {
 	float x, y;
 } Point;
@@ -73,6 +76,7 @@ static Point Midpoint(Point a, Point b)
 }
 
 #include "Reading.c"
+#include "Exporting.c"
 #include "Rasterizing.c"
 #include "Tesselating.c"
 #include "LoadingTTF.c"
