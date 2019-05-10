@@ -30,20 +30,22 @@ unsigned long skrCalcCellCount(SKR_Dimensions dims)
 	return CalcRasterWidth(dims) * dims.height;
 }
 
-static __m128i GatherEdge(__m128i * restrict pointer)
+static __m128i GatherEdge_sse2(__m128i * restrict pointer)
 {
-	__m128i const edgeMask = _mm_set1_epi32(0xFFFF);
-	__m128i lowerEdge = _mm_and_si128(pointer[0], edgeMask);
-	__m128i upperEdge = _mm_and_si128(pointer[1], edgeMask);
-	return _mm_packus_epi32(lowerEdge, upperEdge);
+	__m128i lowerEdge = _mm_srai_epi32(_mm_slli_epi32(pointer[0], 16), 16);
+	__m128i upperEdge = _mm_srai_epi32(_mm_slli_epi32(pointer[1], 16), 16);
+	return _mm_packs_epi32(lowerEdge, upperEdge);
 }
 
-static __m128i GatherTail(__m128i * restrict pointer)
+static __m128i GatherTail_sse2(__m128i * restrict pointer)
 {
-	__m128i lowerTail = _mm_srli_epi32(pointer[0], 16);
-	__m128i upperTail = _mm_srli_epi32(pointer[1], 16);
-	return _mm_packus_epi32(lowerTail, upperTail);
+	__m128i lowerTail = _mm_srai_epi32(pointer[0], 16);
+	__m128i upperTail = _mm_srai_epi32(pointer[1], 16);
+	return _mm_packs_epi32(lowerTail, upperTail);
 }
+
+#define GatherEdge GatherEdge_sse2
+#define GatherTail GatherTail_sse2
 
 #if 0
 	SKR_ALPHA_8_UINT,
@@ -61,7 +63,16 @@ static __m128i BoundPixelValues(__m128i value)
 	return _mm_min_epi16(value, constMax);
 }
 
-static void ConvertPixels(__m128i value, __m128i * restrict pixels)
+#if 0
+static void ConvertPixels_sse2(__m128i value, __m128i * restrict pixels)
+{
+	// Not finished.
+	pixels[0] = _mm_unpacklo_epi16(value, value);
+	pixels[1] = _mm_unpackhi_epi16(value, value);
+}
+#endif
+
+static void ConvertPixels_ssse3(__m128i value, __m128i * restrict pixels)
 {
 	__m128i const lowerMask = _mm_set_epi8(
 		0xFF, 0x06, 0x06, 0x06,
@@ -76,6 +87,8 @@ static void ConvertPixels(__m128i value, __m128i * restrict pixels)
 	pixels[0] = _mm_shuffle_epi8(value, lowerMask);
 	pixels[1] = _mm_shuffle_epi8(value, upperMask);
 }
+
+#define ConvertPixels ConvertPixels_ssse3
 
 static void WritePixels(unsigned char * restrict image, SKR_Dimensions dims,
 	__m128i * restrict pixels, unsigned long row, unsigned long col)
