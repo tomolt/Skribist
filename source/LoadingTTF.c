@@ -499,6 +499,10 @@ SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
 	MemRange range;
 	s = GetOutlineRange(font, glyph, &range);
 	if (s) return s;
+	if (range.upperBound == range.lowerBound) {
+		*bounds = (SKR_Bounds) { 0, 0, 0, 0 }; // TODO get rid of this
+		return SKR_SUCCESS;
+	}
 	if ((unsigned long) (range.upperBound - range.lowerBound) < sizeof(ShHdr)) return SKR_FAILURE;
 	ShHdr const * restrict sh = (ShHdr const *) range.lowerBound;
 
