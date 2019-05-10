@@ -89,7 +89,7 @@ static void write_bmp(unsigned char * image, FILE * outFile, SKR_Dimensions dim)
 int main(int argc, char const *argv[])
 {
 	if (argc != 2) {
-		fprintf(stderr, "usage: %s <char>\n", argv[0]);
+		fprintf(stderr, "usage: %s <string>\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 

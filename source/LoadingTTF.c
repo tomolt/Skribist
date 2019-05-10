@@ -468,21 +468,26 @@ typedef struct {
 	BYTES2 yMax;
 } ShHdr;
 
-// TODO GetOutlineRange instead
-static SKR_Status GetOutlineAddr(SKR_Font const * restrict font, Glyph glyph, BYTES1 * restrict * restrict addr)
+typedef struct {
+	BYTES1 * lowerBound, * upperBound;
+} MemRange;
+
+static SKR_Status GetOutlineRange(SKR_Font const * restrict font,
+	Glyph glyph, MemRange * restrict range)
 {
 	void const * locaAddr = (BYTES1 *) font->data + font->loca.offset;
+	BYTES1 * glyfAddr = (BYTES1 *) font->data + font->glyf.offset;
 	int n = font->numGlyphs + 1;
 	if (!(glyph < n)) return SKR_FAILURE;
-	unsigned long offset;
 	if (!font->indexToLocFormat) {
 		BYTES2 * loca = (BYTES2 *) locaAddr;
-		offset = 2 * (unsigned long) ru16(loca[glyph]);
+		range->lowerBound = glyfAddr + 2 * (unsigned long) ru16(loca[glyph]);
+		range->upperBound = glyfAddr + 2 * (unsigned long) ru16(loca[glyph + 1]);
 	} else {
 		BYTES4 * loca = (BYTES4 *) locaAddr;
-		offset = ru32(loca[glyph]);
+		range->lowerBound = glyfAddr + ru32(loca[glyph]);
+		range->upperBound = glyfAddr + ru32(loca[glyph + 1]);
 	}
-	*addr = (BYTES1 *) font->data + font->glyf.offset + offset;
 	return SKR_SUCCESS;
 }
 
@@ -490,10 +495,11 @@ SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, SKR_Bounds * restrict bounds)
 {
 	SKR_Status s;
-	BYTES1 * outlineAddr;
-	s = GetOutlineAddr(font, glyph, &outlineAddr);
+	MemRange range;
+	s = GetOutlineRange(font, glyph, &range);
 	if (s) return s;
-	ShHdr const * restrict sh = (ShHdr const *) outlineAddr;
+	if (range.upperBound - range.lowerBound < (long) sizeof(ShHdr)) return SKR_FAILURE;
+	ShHdr const * restrict sh = (ShHdr const *) range.lowerBound;
 
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
@@ -674,11 +680,11 @@ SKR_Status skrDrawOutline(SKR_Font const * restrict font, Glyph glyph,
 	SKR_Transform transform, RasterCell * restrict raster, SKR_Dimensions dims)
 {
 	SKR_Status s;
-	BYTES1 * restrict outlineAddr;
-	s = GetOutlineAddr(font, glyph, &outlineAddr);
+	MemRange range;
+	s = GetOutlineRange(font, glyph, &range);
 	if (s) return s;
 	OutlineIntel intel = { 0 };
-	s = ScoutOutline(outlineAddr, &intel);
+	s = ScoutOutline(range.lowerBound, &intel);
 	if (s) return s;
 	transform.xScale /= font->unitsPerEm;
 	transform.yScale /= font->unitsPerEm;
