@@ -1,3 +1,4 @@
+#if 0
 // TODO take monitor gamma i guess?
 static double CalcLinearToGamma(double L)
 {
@@ -18,6 +19,9 @@ void skrInitializeLibrary(void)
 		LinearToGamma[i] = round(CalcLinearToGamma(i / (float) GRAIN) * 255.0);
 	}
 }
+#endif
+
+void skrInitializeLibrary(void) {}
 
 uint32_t CalcRasterWidth(SKR_Dimensions dims)
 {

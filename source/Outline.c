@@ -188,10 +188,10 @@ SKR_Status skrGetOutlineBounds(SKR_Font const * restrict font, Glyph glyph,
 	transform.yScale /= font->unitsPerEm;
 
 	// TODO i guess the floor() is not neccessary here.
-	bounds->xMin = floor((double) (ri16(sh->xMin) - 1) * transform.xScale + transform.xMove);
-	bounds->yMin = floor((double) (ri16(sh->yMin) - 1) * transform.yScale + transform.yMove);
-	bounds->xMax = ceil ((double) (ri16(sh->xMax) + 1) * transform.xScale + transform.xMove);
-	bounds->yMax = ceil ((double) (ri16(sh->yMax) + 1) * transform.yScale + transform.yMove);
+	bounds->xMin = floorf((ri16(sh->xMin) - 1) * transform.xScale + transform.xMove);
+	bounds->yMin = floorf((ri16(sh->yMin) - 1) * transform.yScale + transform.yMove);
+	bounds->xMax = ceilf ((ri16(sh->xMax) + 1) * transform.xScale + transform.xMove);
+	bounds->yMax = ceilf ((ri16(sh->yMax) + 1) * transform.yScale + transform.yMove);
 
 	return SKR_SUCCESS;
 }

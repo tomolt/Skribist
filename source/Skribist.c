@@ -2,7 +2,6 @@
 /*
 C stdlib headers - dependency on these should be removed as soon as possible.
 */
-#include <math.h>
 #include <assert.h>
 
 /*
@@ -21,19 +20,15 @@ C standard headers - we can use these even if we don't link with the standard li
 #endif
 
 /*
-So as it turns out, these three naive macros are actually
+So as it turns out, these first three naive macros are actually
 faster than any bit-tricks or specialized functions on amd64.
 */
 
-#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-#define gabs(x) ((x) >= 0 ? (x) : -(x))
+#define gabs(x)   ((x) >= 0 ? (x) : -(x))
+#define floorf(x) __builtin_floorf(x)
+#define ceilf(x)  __builtin_ceilf(x)
 
 #define GRAIN_BITS 8
 #define GRAIN (1 << GRAIN_BITS)

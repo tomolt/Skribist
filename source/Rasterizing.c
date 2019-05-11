@@ -1,7 +1,7 @@
 static float CalcStepSize(float diff)
 {
 	if (diff == 0.0f) return 0.0f;
-	return fabs(1.0f / diff);
+	return gabs(1.0f / diff);
 }
 
 static float FindFirstCrossing(float beg, float diff, float stepSize)
