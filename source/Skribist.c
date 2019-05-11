@@ -78,5 +78,6 @@ static Point Midpoint(Point a, Point b)
 #include "Exporting.c"
 #include "Rasterizing.c"
 #include "Tesselating.c"
-#include "LoadingTTF.c"
+#include "Outline.c"
 #include "Assembly.c"
+#include "Preparing.c"
