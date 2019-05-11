@@ -3,8 +3,6 @@
 C stdlib headers - dependency on these should be removed as soon as possible.
 */
 #include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 
 /*
