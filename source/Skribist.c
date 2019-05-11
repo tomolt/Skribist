@@ -1,9 +1,3 @@
-
-/*
-C stdlib headers - dependency on these should be removed as soon as possible.
-*/
-#include <assert.h>
-
 /*
 C standard headers - we can use these even if we don't link with the standard library.
 */
@@ -12,12 +6,6 @@ C standard headers - we can use these even if we don't link with the standard li
 #include <immintrin.h> // TODO MSVC
 
 #include "Skribist.h"
-
-#if 1
-#define SKR_assert(stmt) assert(stmt)
-#else
-#define SKR_assert(stmt) do {} while (0)
-#endif
 
 /*
 So as it turns out, these first three naive macros are actually
@@ -51,6 +39,24 @@ typedef struct {
 	uint32_t rasterWidth;
 } Workspace;
 
+static char * FormatUint(unsigned int n, char buf[8])
+{
+	buf[7] = '\0';
+	char * ptr = buf + 7;
+	while (n > 0) {
+		*--ptr = (n % 10) + '0';
+		n /= 10;
+	}
+	return ptr;
+}
+
+static size_t LengthOfString(char const * str)
+{
+	size_t i = 0;
+	while (str[i] != '\0') ++i;
+	return i;
+}
+
 static int CompareStrings(char const * a, char const * b, long n)
 {
 	for (long i = 0; i < n; ++i) {
@@ -66,6 +72,37 @@ static Point Midpoint(Point a, Point b)
 	float y = (a.y + b.y) / 2.0f;
 	return (Point) { x, y };
 }
+
+/* from Platform.S */
+extern ssize_t SKR_assert_write(int fd, void const * buf, size_t count);
+extern __attribute__((noreturn)) void SKR_assert_abort(void);
+
+static inline void SKR_assert_print(char const * message)
+{
+	size_t length = LengthOfString(message);
+	SKR_assert_write(2, message, length);
+}
+
+static inline __attribute__((noreturn))
+void SKR_assert_fail(char const * expr, char const * file,
+	unsigned int line, char const * function)
+{
+	(void) file;
+	char buf[8];
+	char * lineNo = FormatUint(line, buf);
+	SKR_assert_print(file);
+	SKR_assert_print(": ");
+	SKR_assert_print(lineNo);
+	SKR_assert_print(": ");
+	SKR_assert_print(function);
+	SKR_assert_print("(): Assertion \"");
+	SKR_assert_print(expr);
+	SKR_assert_print("\" failed.\n");
+	SKR_assert_abort();
+}
+
+#define SKR_assert(expr) \
+	((void) ((expr) ? 0 : (SKR_assert_fail(#expr, __FILE__, __LINE__, __FUNCTION__), 0)))
 
 #include "Reading.c"
 #include "Exporting.c"

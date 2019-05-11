@@ -31,7 +31,7 @@ static int FindSegment_Format4(int segCount,
 	TODO upgrade to binary search here.
 	Right now this is linear search because there's less stuff that can go wrong with it.
 	*/
-	assert(charCode <= USHRT_MAX);
+	SKR_assert(charCode <= USHRT_MAX);
 	for (int i = 0; i < segCount; ++i) {
 		int endCode = ru16(endCodes[i]);
 		if (endCode < charCode) continue;
