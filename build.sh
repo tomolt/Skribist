@@ -14,10 +14,12 @@ build_all() {
 	build_variant "d2" "-g -O2"
 	build_variant "p2" "-pg -O2"
 	build_variant "o3" "-O3"
-	$CC $CFLAGS -g -O0 examples/bitmap.c build/d0/libSkribist.a -o examples/bitmap -Iinclude -lm
-	$CC $CFLAGS -g -O0 stress/stress.c build/d2/libSkribist.a -o stress/stress.d2 -Iinclude -lm
-	$CC $CFLAGS -g -O0 stress/stress.c build/p2/libSkribist.a -o stress/stress.p2 -Iinclude -lm
-	$CC $CFLAGS -g -O0 stress/stress.c build/o3/libSkribist.a -o stress/stress.o3 -Iinclude -lm
+	$CC $CFLAGS -g -O0 examples/bitmap.c -c -o build/bitmap.o -Iinclude
+	$CC $CFLAGS -g -O0 stress/stress.c -c -o build/stress.o -Iinclude
+	$CC build/bitmap.o build/d0/libSkribist.a -o examples/bitmap -lm
+	$CC build/stress.o build/d2/libSkribist.a -o stress/stress.d2 -lm
+	$CC -pg build/stress.o build/p2/libSkribist.a -o stress/stress.p2 -lm
+	$CC build/stress.o build/o3/libSkribist.a -o stress/stress.o3 -lm
 }
 
 time build_all
