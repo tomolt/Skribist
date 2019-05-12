@@ -1,0 +1,3 @@
+CC := clang
+DEF_CFLAGS += -std=gnu99 -pedantic -Wall -Wextra
+SKR_CFLAGS += -mssse3

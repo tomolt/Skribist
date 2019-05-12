@@ -1,0 +1,9 @@
+include_rules
+CFLAGS := $(DEF_CFLAGS) $(SKR_CFLAGS) @(VAR_CFLAGS)
+: foreach source/*.S |> nasm -felf64 %f -o %o |> %B.o
+: foreach source/*.c |> $(CC) $(CFLAGS) -c %f -o %o -Iinclude |> %B.o
+: *.o |> ar rcs %o %f |> libSkribist.a
+: bitmap.c |> $(CC) $(CFLAGS) -c %f -o %o -Iinclude |> %B.o
+: stress.c |> $(CC) $(CFLAGS) -c %f -o %o -Iinclude |> %B.o
+: stress.o libSkribist.a |> $(CC) $(LDFLAGS) %f -o %o -lm |> stress.elf
+: bitmap.o libSkribist.a |> $(CC) $(LDFLAGS) %f -o %o -lm |> bitmap.elf

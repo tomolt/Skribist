@@ -95,7 +95,7 @@ int main(int argc, char const *argv[])
 
 	unsigned char *rawData;
 	// TODO better location for example font file
-	ret = read_file("../examples/Ubuntu-C.ttf", (void **) &rawData);
+	ret = read_file("../Ubuntu-C.ttf", (void **) &rawData);
 	if (ret != 0) {
 		fprintf(stderr, "Unable to open TTF font file.\n");
 		return EXIT_FAILURE;

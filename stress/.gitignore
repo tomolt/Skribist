@@ -1,6 +1,0 @@
-stress.d2
-stress.p2
-stress.o3
-gmon.out
-callgrind.out.*
-cachegrind.out.*
