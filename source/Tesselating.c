@@ -1,3 +1,7 @@
+#include "Internals.h"
+
+extern void DrawLine(Workspace * restrict ws, Line line);
+
 static float ManhattanDistance(Point a, Point b)
 {
 	return gabs(a.x - b.x) + gabs(a.y - b.y);
@@ -19,7 +23,7 @@ static void SplitCurve(Curve curve, Curve segments[2])
 	segments[1] = (Curve) { pivot, curve.end, ctrl1 };
 }
 
-static void DrawCurve(Workspace * restrict ws, Curve initialCurve)
+void DrawCurve(Workspace * restrict ws, Curve initialCurve)
 {
 	/*
 	Ínstead of recursion we use an explicit stack here.

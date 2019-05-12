@@ -1,3 +1,5 @@
+#include "Internals.h"
+
 #if 0
 // TODO take monitor gamma i guess?
 static double CalcLinearToGamma(double L)

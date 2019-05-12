@@ -1,3 +1,5 @@
+#include "Internals.h"
+
 static float CalcStepSize(float diff)
 {
 	if (diff == 0.0f) return 0.0f;
@@ -84,7 +86,7 @@ static void RasterizeLine(Workspace * restrict ws, Line line)
 	RasterizeDot(ws, prev_qx, prev_qy, qx, qy);
 }
 
-static void DrawLine(Workspace * restrict ws, Line line)
+void DrawLine(Workspace * restrict ws, Line line)
 {
 	float diff = line.end.x - line.beg.x;
 	if (diff <= -1.0f / GRAIN || 1.0f / GRAIN <= diff) {

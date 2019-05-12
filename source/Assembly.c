@@ -1,3 +1,4 @@
+#include "Internals.h"
 
 static int GetCharCodeFromUTF8(char const * restrict * restrict ptr)
 {

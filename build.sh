@@ -1,11 +1,16 @@
 #!/bin/sh
 
+set -e
+
 source ./environ.sh
 
 build_variant() {
-	mkdir -p build/$1 &&
-	nasm -felf64 source/Platform.S -o build/$1/Platform.o &&
-	$CC $CFLAGS $SKR_CFLAGS $2 source/Skribist.c -c -o build/$1/Skribist.o -Iinclude &&
+	mkdir -p build/$1
+	nasm -felf64 source/Platform.S -o build/$1/Platform.o
+	for src in source/*.c; do
+		obj=build/$1/$(basename $src .c).o
+		$CC $CFLAGS $SKR_CFLAGS $2 $src -c -o $obj -Iinclude
+	done
 	ar rcs build/$1/libSkribist.a build/$1/*.o
 }
 
@@ -18,7 +23,7 @@ build_all() {
 	$CC $CFLAGS -g -O0 stress/stress.c -c -o build/stress.o -Iinclude
 	$CC build/bitmap.o build/d0/libSkribist.a -o examples/bitmap -lm
 	$CC build/stress.o build/d2/libSkribist.a -o stress/stress.d2 -lm
-	$CC -pg build/stress.o build/p2/libSkribist.a -o stress/stress.p2 -lm
+	$CC build/stress.o build/p2/libSkribist.a -o stress/stress.p2 -lm -pg
 	$CC build/stress.o build/o3/libSkribist.a -o stress/stress.o3 -lm
 }
 
