@@ -71,8 +71,8 @@ typedef struct {
 	BYTES4 magicNumber;
 	BYTES2 flags;
 	BYTES2 unitsPerEm;
-	BYTES8 created;
-	BYTES8 modified;
+	BYTES2 created[4];
+	BYTES2 modified[4];
 	BYTES2 xMin;
 	BYTES2 yMin;
 	BYTES2 xMax;
