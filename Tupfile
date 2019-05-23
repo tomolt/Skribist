@@ -1,5 +1,6 @@
 include_rules
 CFLAGS := $(DEF_CFLAGS) $(SKR_CFLAGS) @(VAR_CFLAGS)
+CFLAGS += "-fdebug-prefix-map=$(pwd)=../"
 : foreach source/*.S |> nasm -felf64 %f -o %o |> %B.o
 : foreach source/*.c |> $(CC) $(CFLAGS) -c %f -o %o -Iinclude |> %B.o
 : *.o |> ar rcs %o %f |> libSkribist.a
