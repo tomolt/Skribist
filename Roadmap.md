@@ -10,26 +10,28 @@
 - SIMD rasterizer optimization
 - cmap format 6
 - bmp example UTF8
+- Total independence from the C stdlib
 ### To be done before v1.0
 - cmap format 1
+- cmap format 12
 - Manual array bounds checking in the entire TTF loader
 - Verifying min / max values in TTF data
 - Text composing
 - Kerning
 - Output format controllable by a generous list of enums ala OpenGL
-- Gamma Correction
+- Gamma Correction & dpi conversion
 - take image stride
 - CPU-dispatch code
+- Alternate code paths for SIMD-ified functions
 ### Coming after v1.0
 - avx2?
 - Font Collections?
+- Variable Fonts?
 - Compound glyphs
 - Vertical composing
-- Total independence from the C stdlib
 - nostdlib example program maybe?
 - UTF16 convenience functions
 - A subset of the Unicode BiDi Algorithm
-- cmap format 12
 - Utilising GPOS, GSUB, JUSTF tables
 - Optional sub-pixel rendering for LCD screens
 - Ideomatic C++ wrapper
@@ -38,4 +40,4 @@
 - Hinting (huge undertaking, but at least not encumbered by patents anymore)
 - Optional transparent caching layer over the entire API for easy speedups
 - Other language wrappers?
-- stb truetype compatibility layer
+- stb\_truetype compatibility layer
