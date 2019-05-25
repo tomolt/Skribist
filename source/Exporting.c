@@ -1,5 +1,7 @@
 #include "Internals.h"
 
+#include <immintrin.h> // TODO MSVC
+
 uint32_t CalcRasterWidth(SKR_Dimensions dims)
 {
 	return (dims.width + 7) & ~7;

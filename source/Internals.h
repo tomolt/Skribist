@@ -1,9 +1,4 @@
-/*
-C standard headers - we can use these even if we don't link with the standard library.
-*/
 #include <stdint.h>
-#include <limits.h>
-#include <immintrin.h> // TODO MSVC
 
 #include "Skribist.h"
 
@@ -16,6 +11,7 @@ faster than any bit-tricks or specialized functions on amd64.
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define gabs(x)   ((x) >= 0 ? (x) : -(x))
 #define floorf(x) __builtin_floorf(x)
+#define roundf(x) __builtin_roundf(x)
 #define ceilf(x)  __builtin_ceilf(x)
 
 #define GRAIN_BITS 8
@@ -40,7 +36,7 @@ typedef struct {
 } Workspace;
 
 char * FormatUint(unsigned int n, char buf[8]);
-size_t LengthOfString(char const * str);
+unsigned long LengthOfString(char const * str);
 int CompareStrings(char const * a, char const * b, long n);
 Point Midpoint(Point a, Point b);
 
@@ -54,11 +50,10 @@ void SKR_assert_fail(char const * expr, char const * file,
 typedef uint8_t  const BYTES1;
 typedef uint16_t const BYTES2;
 typedef uint32_t const BYTES4;
-typedef uint64_t const BYTES8;
 
 static inline uint16_t ru16(BYTES2 raw)
 {
-	BYTES1 *bytes = (BYTES1 *) &raw;
+	BYTES1 * bytes = (BYTES1 *) &raw;
 	uint16_t b0 = bytes[1], b1 = bytes[0];
 	return b0 | b1 << 8;
 }
@@ -71,7 +66,7 @@ static inline int16_t ri16(BYTES2 raw)
 
 static inline uint32_t ru32(BYTES4 raw)
 {
-	BYTES1 *bytes = (BYTES1 *) &raw;
+	BYTES1 * bytes = (BYTES1 *) &raw;
 	uint32_t b0 = bytes[3], b1 = bytes[2];
 	uint32_t b2 = bytes[1], b3 = bytes[0];
 	return b0 | b1 << 8 | b2 << 16 | b3 << 24;

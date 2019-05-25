@@ -79,15 +79,19 @@ typedef uint32_t RasterCell;
 #define SKR_USUAL_GAMMA_VALUE 2.2f
 #define SKR_GAMMA_TABLE_LENGTH 1025
 
+/* SKR_ScreenInfo structs are somewhat large,
+ * so you'll probably want to allocate them on the heap
+ * or in the bss segment to avoid potential stack overflows.
+ */
 typedef struct {
 	// hDpi, vDpi;
 	float gammaValue;
 	uint8_t gammaTable[SKR_GAMMA_TABLE_LENGTH];
-} SKR_Device;
+} SKR_ScreenInfo;
 
 SKR_Status skrInitializeFont(SKR_Font * restrict font);
 
-void skrBuildDevice(SKR_Device * restrict device);
+void skrBuildScreenInfo(SKR_ScreenInfo * restrict screenInfo);
 
 SKR_Status skrAssembleStringUTF8(SKR_Font * restrict font,
 	char const * restrict line, float size,

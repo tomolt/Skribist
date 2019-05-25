@@ -1,5 +1,7 @@
 #include "Internals.h"
 
+#include <limits.h>
+
 /*
 ======== initialization ========
 */

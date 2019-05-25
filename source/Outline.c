@@ -1,5 +1,7 @@
 #include "Internals.h"
 
+#include <limits.h>
+
 void DrawLine(Workspace * restrict ws, Line line);
 void DrawCurve(Workspace * restrict ws, Curve initialCurve);
 uint32_t CalcRasterWidth(SKR_Dimensions dims);
