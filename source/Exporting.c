@@ -1,30 +1,5 @@
 #include "Internals.h"
 
-#if 0
-// TODO take monitor gamma i guess?
-static double CalcLinearToGamma(double L)
-{
-	double S;
-	if (L <= 0.0031308) {
-		S = L * 12.92;
-	} else {
-		S = 1.055 * pow(L, 1.0 / 2.2) - 0.055;
-	}
-	return S;
-}
-
-static unsigned char LinearToGamma[GRAIN + 1];
-
-void skrInitializeLibrary(void)
-{
-	for (int i = 0; i <= GRAIN; ++i) {
-		LinearToGamma[i] = round(CalcLinearToGamma(i / (float) GRAIN) * 255.0);
-	}
-}
-#endif
-
-void skrInitializeLibrary(void) {}
-
 uint32_t CalcRasterWidth(SKR_Dimensions dims)
 {
 	return (dims.width + 7) & ~7;

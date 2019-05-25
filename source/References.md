@@ -16,6 +16,8 @@
 	http://www.antigrain.com/research/adaptive_bezier/
 - *Maxim Shemanarev*, "Anti-Grain Geometry - Texts Rasterization Exposures",<br/>
 	http://www.antigrain.com/research/font_rasterization/
+- *Jason Summers*, "ImageWorsener - A close look at the sRGB formula",<br/>
+	http://entropymine.com/imageworsener/srgbformula/
 
 ## TrueType & OpenType parsing
 
@@ -27,6 +29,8 @@
 	https://developer.apple.com/fonts/TrueType-Reference-Manual/
 - *Microsoft Corporation*, "OpenType® specification",<br/>
 	https://docs.microsoft.com/en-us/typography/opentype/spec/
+- *the FreeType Project*, "FreeType Glyph Conventions / VI",<br/>
+	https://www.freetype.org/freetype2/docs/glyphs/glyphs-6.html
 
 ## struct-packing (needed for struct-mapping)
 

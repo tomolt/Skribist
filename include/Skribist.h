@@ -76,8 +76,18 @@ typedef struct {
 
 typedef uint32_t RasterCell;
 
-void skrInitializeLibrary(void);
+#define SKR_USUAL_GAMMA_VALUE 2.2f
+#define SKR_GAMMA_TABLE_LENGTH 1025
+
+typedef struct {
+	// hDpi, vDpi;
+	float gammaValue;
+	uint8_t gammaTable[SKR_GAMMA_TABLE_LENGTH];
+} SKR_Device;
+
 SKR_Status skrInitializeFont(SKR_Font * restrict font);
+
+void skrBuildDevice(SKR_Device * restrict device);
 
 SKR_Status skrAssembleStringUTF8(SKR_Font * restrict font,
 	char const * restrict line, float size,
